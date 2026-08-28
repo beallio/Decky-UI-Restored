@@ -165,7 +165,7 @@ class Plugin:
             save_callback=self._save_updater_state,
             log_callback=self._updater_log,
             release_client=GitHubReleaseClient(
-                owner="beallio", repo="Deck-UI-Restored"
+                owner="beallio", repo="Decky-UI-Restored"
             ),
             version_resolver=_resolve_plugin_version,
             now=lambda: __import__("datetime").datetime.now(

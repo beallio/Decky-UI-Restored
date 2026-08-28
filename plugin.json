@@ -1,5 +1,5 @@
 {
-  "name": "Deck UI Restored",
+  "name": "Decky UI Restored",
   "author": "beallio",
   "flags": [],
   "api_version": 1,
@@ -13,7 +13,7 @@
       "achievements"
     ],
     "description": "Restores native Steam Deck interface behavior affected by Steam updates, including mini achievements and Home carousel fixes.",
-    "image": "https://raw.githubusercontent.com/beallio/Deck-UI-Restored/main/assets/achievement-bar-restored.png"
+    "image": "https://raw.githubusercontent.com/beallio/Decky-UI-Restored/main/assets/achievement-bar-restored.png"
   },
   "version": "0.2.1"
 }

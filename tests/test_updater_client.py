@@ -24,7 +24,7 @@ def test_github_release_client(monkeypatch) -> None:
 
     def mock_urlopen(*args, **kwargs):
         req = args[0]
-        assert req.full_url == "https://api.github.com/repos/beallio/Deck-UI-Restored/releases"
+        assert req.full_url == "https://api.github.com/repos/beallio/Decky-UI-Restored/releases"
         assert req.headers["Accept"] == "application/vnd.github+json"
         return MockResponse()
 

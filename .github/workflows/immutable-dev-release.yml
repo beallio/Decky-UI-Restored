@@ -106,7 +106,7 @@ jobs:
           python3 scripts/validate_plugin_zip.py \
             Decky-SteamAchievements.zip \
             --expected-root Decky-SteamAchievements \
-            --expected-name "Deck UI Restored" \
+            --expected-name "Decky UI Restored" \
             --expected-version "$DEV_VERSION"
           node -e 'const fs=require("fs"); const p="Decky-SteamAchievements-"+process.env.DEV_TAG+".manifest.json"; const m=JSON.parse(fs.readFileSync(p)); if(m.schemaVersion!==1||m.pluginName!=="Achievements Restored"||m.packageName!=="decky-steamachievements"||m.version!==process.env.DEV_VERSION||m.tag!==process.env.DEV_TAG||m.channel!=="dev"||m.assetName!=="Decky-SteamAchievements.zip") process.exit(1)'
 
@@ -126,5 +126,5 @@ jobs:
             "Decky-SteamAchievements-$DEV_TAG.manifest.json" \
             --verify-tag \
             --prerelease \
-            --title "Deck UI Restored v$DEV_VERSION (Development)" \
+            --title "Decky UI Restored v$DEV_VERSION (Development)" \
             --notes "Immutable development build from commit $FULL_SHA."

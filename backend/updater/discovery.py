@@ -13,7 +13,9 @@ from backend.updater.models import (
 
 from dataclasses import dataclass
 
-ACCEPTED_PLUGIN_NAMES = frozenset(("Achievements Restored", "Deck UI Restored"))
+ACCEPTED_PLUGIN_NAMES = frozenset(
+    ("Achievements Restored", "Deck UI Restored", "Decky UI Restored")
+)
 
 
 @dataclass(frozen=True)

@@ -11,7 +11,7 @@ from typing import Any
 
 PACKAGE_NAME = "decky-steamachievements"
 DEFAULT_ARCHIVE_ROOT = "Decky-SteamAchievements"
-DEFAULT_PLUGIN_NAME = "Deck UI Restored"
+DEFAULT_PLUGIN_NAME = "Decky UI Restored"
 REQUIRED_FILES = (
     "LICENSE",
     "main.py",
