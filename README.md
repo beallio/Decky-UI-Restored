@@ -1,5 +1,9 @@
 # Deck UI Restored
 
+[![License](https://img.shields.io/github/license/beallio/Decky-SteamAchievements)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/beallio/Decky-SteamAchievements?display_name=tag)](https://github.com/beallio/Decky-SteamAchievements/releases/latest)
+[![CI](https://github.com/beallio/Decky-SteamAchievements/actions/workflows/ci.yml/badge.svg)](https://github.com/beallio/Decky-SteamAchievements/actions/workflows/ci.yml)
+
 Deck UI Restored is a Decky Loader plugin that fixes Steam Deck interface problems caused by Steam updates. Each fix has its own switch, so you can use only the ones you want.
 
 ## What it fixes
@@ -17,6 +21,10 @@ The bar still follows Steam's normal rules. It stays hidden when Steam has no ac
 The first game in the Home carousel can sometimes stay highlighted after controller focus moves to another game. Its old title, glow, and raised tile can remain on screen.
 
 The optional Home Carousel Title Fix clears that stuck state while you move through the carousel. It keeps the appearance chosen by Steam and your other CSSLoader themes.
+
+| Before: the first game stays highlighted | After: only the focused game is highlighted |
+| --- | --- |
+| ![Home carousel before the fix, with the first game title and raised tile still visible](assets/home-carousel-before.png) | ![Home carousel after the fix, with the first game returned to its normal resting state](assets/home-carousel-after.png) |
 
 ## Using the plugin
 
