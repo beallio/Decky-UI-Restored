@@ -2,7 +2,7 @@
 
 ## Technical background
 
-Deck UI Restored is a collection of independent, reversible Steam UI regression
+Decky UI Restored is a collection of independent, reversible Steam UI regression
 fixes. Each feature has its own persisted setting and lifecycle controller. A
 failed patch must log and stop without crashing Steam UI.
 
@@ -135,26 +135,28 @@ configured GitHub repository URL and exact `Decky-SteamAchievements.zip`
 distribution asset aligned with the release workflow. The installer bundle,
 plugin ZIP, archive root, and installed directory use
 `Decky-SteamAchievements`; Decky's plugin list and opened QAM panel use the
-display name `Deck UI Restored`.
+display name `Decky UI Restored`.
 
 ## Display-name migration
 
-The GitHub repository is `beallio/Deck-UI-Restored`. The distribution identity
+The GitHub repository is `beallio/Decky-UI-Restored`. The distribution identity
 remains `Decky-SteamAchievements` for the ZIP filename, ZIP root, installed
-folder, settings, logs, and release assets. Only the Decky list/QAM display
-identity changed from `Achievements Restored` to `Deck UI Restored`.
+folder, settings, logs, and release assets. The Decky list/QAM display identity
+changed from `Achievements Restored` to `Deck UI Restored`, then to
+`Decky UI Restored`.
 
 Version 0.2.1 is the update bridge. Release manifests deliberately retain
-`pluginName: \"Achievements Restored\"` so clients installed before the rename can
-discover the bridge release. Updater discovery accepts both display names. The
-frontend installer handoff uses the new display name after the bridge is
-installed, and the Desktop installer treats both the former display name and
-the distribution name as migration aliases. Do not remove the former manifest
-identity until the supported installed-version floor has moved past the bridge.
+`pluginName: \"Achievements Restored\"` so clients installed before either rename
+can discover the bridge release. Updater discovery accepts all three display
+names. The frontend installer handoff uses the current display name, and the
+Desktop installer treats both former display names plus the distribution name
+as migration aliases. Do not remove those identities until the supported
+installed-version floor has moved past the bridge.
 
-GitHub redirects the former repository URL after the rename. Do not reuse
-`beallio/Decky-SteamAchievements`; installed clients before this release depend
-on that redirect until they update to code that targets the new repository.
+GitHub redirects the former `beallio/Deck-UI-Restored` and
+`beallio/Decky-SteamAchievements` repository URLs. Do not reuse either slug;
+installed clients depend on those redirects until they update to code that
+targets the current repository.
 
 ## Updater integrity contract
 

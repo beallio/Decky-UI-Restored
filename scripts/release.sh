@@ -137,7 +137,7 @@ node scripts/package.mjs \
 python3 scripts/validate_plugin_zip.py \
   Decky-SteamAchievements.zip \
   --expected-root Decky-SteamAchievements \
-  --expected-name "Deck UI Restored" \
+  --expected-name "Decky UI Restored" \
   --expected-version "$version"
 git tag -a "$tag" -m "Release $tag"
 

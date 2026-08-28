@@ -9,8 +9,8 @@ from pathlib import Path
 
 CANONICAL = "Decky-SteamAchievements"
 PACKAGE_NAME = "decky-steamachievements"
-DISPLAY_NAME = "Deck UI Restored"
-GITHUB_REPOSITORY = "beallio/Deck-UI-Restored"
+DISPLAY_NAME = "Decky UI Restored"
+GITHUB_REPOSITORY = "beallio/Decky-UI-Restored"
 
 
 
@@ -46,7 +46,7 @@ def check(root: Path) -> list[str]:
     )
     workflow_expectations = (
         "--expected-root Decky-SteamAchievements",
-        '--expected-name "Deck UI Restored"',
+        '--expected-name "Decky UI Restored"',
     )
     for expected in workflow_expectations:
         if expected not in dev_release:
@@ -66,11 +66,11 @@ def check(root: Path) -> list[str]:
     repository_expectations = (
         (
             root / "backend" / "updater" / "client.py",
-            'repo: str = "Deck-UI-Restored"',
+            'repo: str = "Decky-UI-Restored"',
         ),
         (
             root / "main.py",
-            'owner="beallio", repo="Deck-UI-Restored"',
+            'owner="beallio", repo="Decky-UI-Restored"',
         ),
         (
             root / "installer" / "Decky-SteamAchievementsInstaller"
@@ -86,14 +86,15 @@ def check(root: Path) -> list[str]:
             )
 
     readme = (root / "README.md").read_text(encoding="utf-8")
-    if not readme.startswith("# Deck UI Restored\n"):
+    if not readme.startswith("# Decky UI Restored\n"):
         errors.append("README title must use the Decky display name")
     developer = (root / "DEVELOPER.md").read_text(encoding="utf-8")
     if (
         'pluginName: \\"Achievements Restored\\"' not in developer
         or "Version 0.2.1 is the update bridge" not in developer
+        or "Deck UI Restored" not in developer
     ):
-        errors.append("DEVELOPER.md must document the legacy update bridge identity")
+        errors.append("DEVELOPER.md must document the legacy update bridge identities")
 
 
     expected = [

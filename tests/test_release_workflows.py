@@ -140,13 +140,13 @@ def test_display_rename_keeps_bridge_manifest_identity() -> None:
     immutable = read(".github/workflows/immutable-dev-release.yml")
     stable = read(".github/workflows/release.yml")
 
-    assert plugin["name"] == "Deck UI Restored"
+    assert plugin["name"] == "Decky UI Restored"
     assert 'const UPDATE_MANIFEST_PLUGIN_NAME = "Achievements Restored";' in package_script
     assert "pluginName: UPDATE_MANIFEST_PLUGIN_NAME" in package_script
     for workflow in (rolling, immutable, stable):
-        assert '--expected-name "Deck UI Restored"' in workflow
+        assert '--expected-name "Decky UI Restored"' in workflow
     assert 'm.pluginName!=="Achievements Restored"' in immutable
-    assert '--title "Deck UI Restored v$DEV_VERSION (Development)"' in immutable
+    assert '--title "Decky UI Restored v$DEV_VERSION (Development)"' in immutable
 
 
 def test_request_helper_validates_before_dispatch() -> None:

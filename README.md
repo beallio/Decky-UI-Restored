@@ -1,16 +1,16 @@
-# Deck UI Restored
+# Decky UI Restored
 
-[![License](https://img.shields.io/github/license/beallio/Deck-UI-Restored)](LICENSE)
-[![Latest release](https://img.shields.io/github/v/release/beallio/Deck-UI-Restored?display_name=tag)](https://github.com/beallio/Deck-UI-Restored/releases/latest)
-[![CI](https://github.com/beallio/Deck-UI-Restored/actions/workflows/ci.yml/badge.svg)](https://github.com/beallio/Deck-UI-Restored/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/beallio/Decky-UI-Restored)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/beallio/Decky-UI-Restored?display_name=tag)](https://github.com/beallio/Decky-UI-Restored/releases/latest)
+[![CI](https://github.com/beallio/Decky-UI-Restored/actions/workflows/ci.yml/badge.svg)](https://github.com/beallio/Decky-UI-Restored/actions/workflows/ci.yml)
 
-Deck UI Restored is a Decky Loader plugin that fixes Steam Deck interface problems caused by Steam updates. Each fix has its own switch, so you can use only the ones you want.
+Decky UI Restored is a Decky Loader plugin that fixes Steam Deck interface problems caused by Steam updates. Each fix has its own switch, so you can use only the ones you want.
 
 ## What it fixes
 
 ### Mini achievements
 
-Steam stopped showing the small achievement progress bar beside Play Time on game details pages. Deck UI Restored brings that bar back by using Steam's own achievement display and live progress data.
+Steam stopped showing the small achievement progress bar beside Play Time on game details pages. Decky UI Restored brings that bar back by using Steam's own achievement display and live progress data.
 
 ![Restored achievement bar](assets/achievement-bar-restored.png)
 
@@ -28,7 +28,7 @@ The optional Home Carousel Title Fix clears that stuck state while you move thro
 
 ## Using the plugin
 
-Open **Quick Access → Decky → Deck UI Restored**.
+Open **Quick Access → Decky → Decky UI Restored**.
 
 The panel contains:
 
@@ -77,7 +77,7 @@ You can also install `Decky-SteamAchievements.zip` with Decky's built-in ZIP ins
 
 Use `Decky-SteamAchievements.zip` for this method. Do not select `Decky-SteamAchievements Installer.zip`; that file is the Desktop installer bundle.
 
-Decky shows the installed plugin as **Deck UI Restored**. The download and installed folder keep the older `Decky-SteamAchievements` name so existing installations can update safely.
+Decky shows the installed plugin as **Decky UI Restored**. The download and installed folder keep the older `Decky-SteamAchievements` name so existing installations can update safely.
 
 ## Development
 

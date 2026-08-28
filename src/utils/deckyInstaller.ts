@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-const EXPECTED_PLUGIN_NAME = "Deck UI Restored";
+const EXPECTED_PLUGIN_NAME = "Decky UI Restored";
 export const INSTALL_TYPE_UPDATE = 2;
 export const INSTALL_TYPE_DOWNGRADE = 3;
 

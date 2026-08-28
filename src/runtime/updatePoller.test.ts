@@ -152,7 +152,7 @@ describe("createUpdatePoller", () => {
     await vi.advanceTimersByTimeAsync(UPDATE_POLL_INITIAL_DELAY_MS);
 
     expect(deps.notify).toHaveBeenCalledWith(
-      "Deck UI Restored Update Available",
+      "Decky UI Restored Update Available",
       "v1.2.3 is available. Open the plugin to install.",
     );
     expect(deps.markUpdateNotified).toHaveBeenCalledWith("v1.2.3");

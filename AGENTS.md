@@ -4,7 +4,7 @@ Guidance for coding agents working in this repo. Keep it current.
 
 ## What this is
 
-Deck UI Restored is a Decky Loader plugin for independent, reversible Steam UI
+Decky UI Restored is a Decky Loader plugin for independent, reversible Steam UI
 regression fixes. It currently restores Valve's native `MiniAchievements`
 component and removes stale Home carousel hover state without overriding theme
 styles. Do not reimplement Valve UI when a stable native component or state
@@ -113,7 +113,7 @@ shipped mechanism).
 - Frontend updater state lives in `src/controllers/pluginUpdate*`, Decky handoff
   in `src/utils/deckyInstaller.ts`, and plugin-scope polling in
   `src/runtime/updatePoller.ts`. The installer argument is the Decky display
-  name `Deck UI Restored`, even though the ZIP/root/folder remain
+  name `Decky UI Restored`, even though the ZIP/root/folder remain
   `Decky-SteamAchievements`.
 - Record pending installs before Decky handoff, confirm accepted handoffs, clear
   failures, and reread locked runtime state before startup reconciliation so
@@ -127,24 +127,24 @@ Two names, deliberately different. Do not "unify" them.
   directory, settings/runtime/log directory, installer artifacts, backend log namespace, and
   release asset. Its npm spelling remains `decky-steamachievements`. These paths are load-bearing
   for in-place updates and must stay stable.
-- **Decky display: `Deck UI Restored`** — lives in `plugin.json` `name` and the frontend
+- **Decky display: `Decky UI Restored`** — lives in `plugin.json` `name` and the frontend
   registration/title constants. Decky Loader overwrites `definePlugin().name` with the manifest
   name and renders that value in its plugin list; `titleView` uses the same display text for the
   opened QAM panel.
-- **GitHub repository: `beallio/Deck-UI-Restored`** — repository, badges, updater, store image,
-  and Desktop installer URLs use this slug. GitHub redirects the former repository URL for older
-  installed clients; never reuse the old slug.
+- **GitHub repository: `beallio/Decky-UI-Restored`** — repository, badges, updater, store image,
+  and Desktop installer URLs use this slug. GitHub redirects the former `Deck-UI-Restored` and
+  `Decky-SteamAchievements` repository slugs for older clients; never reuse either slug.
 
 Decky derives `DECKY_PLUGIN_SETTINGS_DIR`, runtime data, and logs from the archive/install folder,
 not `plugin.json.name`. `scripts/package.mjs` therefore fixes the archive root and asset name to
 `Decky-SteamAchievements` instead of deriving them from the display manifest. The Desktop
-installer recognizes `Achievements Restored` and the former canonical manifest name as migration
-aliases and replaces either installation in place.
+installer recognizes `Achievements Restored`, `Deck UI Restored`, and the former canonical
+manifest name as migration aliases and replaces any of those installations in place.
 
 Version 0.2.1 is the display-name bridge. Release manifests retain
-`pluginName: "Achievements Restored"` so older clients can discover it, while updater discovery
-accepts both that legacy identity and `Deck UI Restored`. Do not change the manifest identity or
-remove the alias until the supported installed-version floor is newer than the bridge.
+`pluginName: "Achievements Restored"` so older clients can discover it. Updater discovery accepts
+that identity, `Deck UI Restored`, and `Decky UI Restored`. Do not change the manifest identity or
+remove either display alias until the supported installed-version floor is newer than the bridge.
 
 The installed `Storage Cleaner` plugin is the reference for this supported split: its folder is
 `decky-storage-cleaner` while its manifest/list name is `Storage Cleaner`.
