@@ -202,6 +202,49 @@ describe("SettingsCoordinator", () => {
     expect(test.achievementController.setEnabled).toHaveBeenCalledTimes(callsBeforeDispose);
   });
 
+  it.each([
+    ["the first", true, false],
+    ["the second", false, true],
+    ["both", true, true],
+  ] as const)(
+    "disposes both controllers when %s disposer throws",
+    (_caseName, achievementThrows, homeCarouselThrows) => {
+      const test = harness();
+      if (achievementThrows) {
+        test.achievementController.dispose.mockImplementation(() => {
+          throw new Error("achievement dispose failed");
+        });
+      }
+      if (homeCarouselThrows) {
+        test.homeCarouselController.dispose.mockImplementation(() => {
+          throw new Error("carousel dispose failed");
+        });
+      }
+
+      expect(() => test.coordinator.dispose()).not.toThrow();
+      expect(test.achievementController.dispose).toHaveBeenCalledOnce();
+      expect(test.homeCarouselController.dispose).toHaveBeenCalledOnce();
+      if (achievementThrows) {
+        expect(test.onError).toHaveBeenCalledWith(
+          "feature",
+          expect.any(Error),
+        );
+      }
+      if (homeCarouselThrows) {
+        expect(test.onError).toHaveBeenCalledWith(
+          "homeCarouselFix",
+          expect.any(Error),
+        );
+      }
+      if (!achievementThrows) {
+        expect(test.onError).not.toHaveBeenCalledWith(
+          "feature",
+          expect.any(Error),
+        );
+      }
+    },
+  );
+
   it("serializes updater writes with independent busy flags", async () => {
     const channel = deferred<typeof defaults>();
     const automatic = deferred<typeof defaults>();

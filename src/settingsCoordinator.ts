@@ -120,8 +120,24 @@ export class SettingsCoordinator {
     if (!this.active) return;
     this.active = false;
     this.listeners.clear();
-    this.options.achievementController.dispose();
-    this.options.homeCarouselController.dispose();
+    try {
+      this.options.achievementController.dispose();
+    } catch (error) {
+      this.reportError("feature", error);
+    }
+    try {
+      this.options.homeCarouselController.dispose();
+    } catch (error) {
+      this.reportError("homeCarouselFix", error);
+    }
+  }
+
+  private reportError(operation: "load" | SettingOperation, error: unknown): void {
+    try {
+      this.options.onError?.(operation, error);
+    } catch {
+      // Error reporting must not keep another feature from terminal cleanup.
+    }
   }
 
   private notify(): void {
