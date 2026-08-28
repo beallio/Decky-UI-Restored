@@ -4,6 +4,7 @@ import type { PluginSettings } from "./backend";
 
 const defaults: PluginSettings = {
   feature_enabled: true,
+  home_carousel_fix_enabled: false,
   debug_logging: false,
   update_channel: "stable",
   automatic_update_checks: true,
@@ -20,17 +21,30 @@ function deferred<T>() {
 }
 
 function harness() {
-  let enabled = false;
-  const controller = {
+  let achievementEnabled = false;
+  let homeCarouselEnabled = false;
+  const achievementController = {
     get enabled() {
-      return enabled;
+      return achievementEnabled;
     },
     setEnabled: vi.fn((next: boolean) => {
-      enabled = next;
+      achievementEnabled = next;
       return true;
     }),
     dispose: vi.fn(() => {
-      enabled = false;
+      achievementEnabled = false;
+    }),
+  };
+  const homeCarouselController = {
+    get enabled() {
+      return homeCarouselEnabled;
+    },
+    setEnabled: vi.fn((next: boolean) => {
+      homeCarouselEnabled = next;
+      return true;
+    }),
+    dispose: vi.fn(() => {
+      homeCarouselEnabled = false;
     }),
   };
   const loadSettings = vi.fn(async () => defaults);
@@ -38,6 +52,12 @@ function harness() {
     ...defaults,
     feature_enabled,
   }));
+  const setHomeCarouselFixEnabled = vi.fn(
+    async (home_carousel_fix_enabled: boolean) => ({
+      ...defaults,
+      home_carousel_fix_enabled,
+    }),
+  );
   const setDebugLogging = vi.fn(async (debug_logging: boolean) => ({
     ...defaults,
     debug_logging,
@@ -53,10 +73,12 @@ function harness() {
   const setVerboseLogging = vi.fn();
   const onError = vi.fn();
   const coordinator = new SettingsCoordinator({
-    controller,
+    achievementController,
+    homeCarouselController,
     defaults,
     loadSettings,
     setFeatureEnabled,
+    setHomeCarouselFixEnabled,
     setDebugLogging,
     setUpdateChannel,
     setAutomaticUpdateChecks,
@@ -64,7 +86,8 @@ function harness() {
     onError,
   });
   return {
-    controller,
+    achievementController,
+    homeCarouselController,
     coordinator,
     loadSettings,
     onError,
@@ -72,6 +95,7 @@ function harness() {
     setUpdateChannel,
     setAutomaticUpdateChecks,
     setFeatureEnabled,
+    setHomeCarouselFixEnabled,
     setVerboseLogging,
   };
 }
@@ -96,7 +120,8 @@ describe("SettingsCoordinator", () => {
       settings: { ...defaults, feature_enabled: false, debug_logging: true },
       loaded: true,
     });
-    expect(test.controller.setEnabled).toHaveBeenLastCalledWith(false);
+    expect(test.achievementController.setEnabled).toHaveBeenLastCalledWith(false);
+    expect(test.homeCarouselController.setEnabled).toHaveBeenLastCalledWith(false);
     expect(test.setVerboseLogging).toHaveBeenLastCalledWith(true);
     expect(snapshots[snapshots.length - 1]).toEqual(test.coordinator.snapshot);
   });
@@ -166,14 +191,15 @@ describe("SettingsCoordinator", () => {
     await Promise.resolve();
     const save = test.coordinator.setFeatureEnabled(false);
     await Promise.resolve();
-    const callsBeforeDispose = test.controller.setEnabled.mock.calls.length;
+    const callsBeforeDispose = test.achievementController.setEnabled.mock.calls.length;
     test.coordinator.dispose();
     feature.resolve({ ...defaults, feature_enabled: true, debug_logging: false });
     await save;
 
-    expect(test.controller.dispose).toHaveBeenCalledOnce();
-    expect(test.controller.enabled).toBe(false);
-    expect(test.controller.setEnabled).toHaveBeenCalledTimes(callsBeforeDispose);
+    expect(test.achievementController.dispose).toHaveBeenCalledOnce();
+    expect(test.homeCarouselController.dispose).toHaveBeenCalledOnce();
+    expect(test.achievementController.enabled).toBe(false);
+    expect(test.achievementController.setEnabled).toHaveBeenCalledTimes(callsBeforeDispose);
   });
 
   it("serializes updater writes with independent busy flags", async () => {
@@ -231,5 +257,33 @@ describe("SettingsCoordinator", () => {
     automatic.resolve({ ...defaults, automatic_update_checks: false });
     await lateSave;
     expect(test.coordinator.snapshot).toEqual(before);
+  });
+
+  it("optimistically controls the Home-carousel fix, then rolls back persistence or installation failures", async () => {
+    const save = deferred<typeof defaults>();
+    const test = harness();
+    test.setHomeCarouselFixEnabled.mockReturnValue(save.promise);
+    test.coordinator.start();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const requested = test.coordinator.setHomeCarouselFixEnabled(true);
+    expect(test.coordinator.snapshot.homeCarouselFixBusy).toBe(true);
+    await Promise.resolve();
+    expect(test.homeCarouselController.setEnabled).toHaveBeenLastCalledWith(true);
+    expect(test.coordinator.snapshot.settings.home_carousel_fix_enabled).toBe(true);
+
+    save.reject(new Error("carousel save failed"));
+    await requested;
+    expect(test.homeCarouselController.setEnabled).toHaveBeenLastCalledWith(false);
+    expect(test.coordinator.snapshot.settings.home_carousel_fix_enabled).toBe(false);
+    expect(test.coordinator.snapshot.homeCarouselFixBusy).toBe(false);
+    expect(test.onError).toHaveBeenCalledWith("homeCarouselFix", expect.any(Error));
+
+    test.setHomeCarouselFixEnabled.mockClear();
+    test.homeCarouselController.setEnabled.mockImplementationOnce(() => false);
+    await test.coordinator.setHomeCarouselFixEnabled(true);
+    expect(test.setHomeCarouselFixEnabled).not.toHaveBeenCalledWith(true);
+    expect(test.coordinator.snapshot.settings.home_carousel_fix_enabled).toBe(false);
   });
 });

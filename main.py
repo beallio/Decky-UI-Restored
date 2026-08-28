@@ -25,6 +25,7 @@ Settings = dict[str, object]
 
 DEFAULT_SETTINGS: Settings = {
     "feature_enabled": True,
+    "home_carousel_fix_enabled": False,
     "debug_logging": False,
     "update_channel": "stable",
     "automatic_update_checks": True,
@@ -39,6 +40,11 @@ def _normalize_settings(value: Any) -> Settings:
             data["feature_enabled"]
             if isinstance(data.get("feature_enabled"), bool)
             else True
+        ),
+        "home_carousel_fix_enabled": (
+            data["home_carousel_fix_enabled"]
+            if isinstance(data.get("home_carousel_fix_enabled"), bool)
+            else False
         ),
         "debug_logging": (
             data["debug_logging"]
@@ -260,6 +266,11 @@ class Plugin:
         if not isinstance(enabled, bool):
             raise TypeError("feature_enabled must be a boolean")
         return self._save_setting("feature_enabled", enabled)
+
+    async def set_home_carousel_fix_enabled(self, enabled: bool) -> Settings:
+        if not isinstance(enabled, bool):
+            raise TypeError("home_carousel_fix_enabled must be a boolean")
+        return self._save_setting("home_carousel_fix_enabled", enabled)
 
     async def set_debug_logging(self, enabled: bool) -> Settings:
         if not isinstance(enabled, bool):

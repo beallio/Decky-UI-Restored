@@ -2,11 +2,12 @@ import type { PluginSettings, UpdateChannel } from "./backend";
 
 type SettingOperation =
   | "feature"
+  | "homeCarouselFix"
   | "debug"
   | "updateChannel"
   | "automaticChecks";
 
-type FeatureController = {
+type ToggleableFeature = {
   readonly enabled: boolean;
   setEnabled(enabled: boolean): boolean;
   dispose(): void;
@@ -16,16 +17,19 @@ export type SettingsSnapshot = {
   settings: PluginSettings;
   loaded: boolean;
   featureBusy: boolean;
+  homeCarouselFixBusy: boolean;
   debugBusy: boolean;
   updateChannelBusy: boolean;
   automaticChecksBusy: boolean;
 };
 
 type SettingsCoordinatorOptions = {
-  controller: FeatureController;
+  achievementController: ToggleableFeature;
+  homeCarouselController: ToggleableFeature;
   defaults: PluginSettings;
   loadSettings: () => Promise<PluginSettings>;
   setFeatureEnabled: (enabled: boolean) => Promise<PluginSettings>;
+  setHomeCarouselFixEnabled: (enabled: boolean) => Promise<PluginSettings>;
   setDebugLogging: (enabled: boolean) => Promise<PluginSettings>;
   setUpdateChannel: (channel: UpdateChannel) => Promise<PluginSettings>;
   setAutomaticUpdateChecks: (enabled: boolean) => Promise<PluginSettings>;
@@ -53,6 +57,7 @@ export class SettingsCoordinator {
       settings: { ...options.defaults },
       loaded: false,
       featureBusy: false,
+      homeCarouselFixBusy: false,
       debugBusy: false,
       updateChannelBusy: false,
       automaticChecksBusy: false,
@@ -95,6 +100,10 @@ export class SettingsCoordinator {
     return this.enqueue("feature", enabled);
   }
 
+  setHomeCarouselFixEnabled(enabled: boolean): Promise<void> {
+    return this.enqueue("homeCarouselFix", enabled);
+  }
+
   setDebugLogging(enabled: boolean): Promise<void> {
     return this.enqueue("debug", enabled);
   }
@@ -111,7 +120,8 @@ export class SettingsCoordinator {
     if (!this.active) return;
     this.active = false;
     this.listeners.clear();
-    this.options.controller.dispose();
+    this.options.achievementController.dispose();
+    this.options.homeCarouselController.dispose();
   }
 
   private notify(): void {
@@ -129,8 +139,15 @@ export class SettingsCoordinator {
   private applySettings(settings: PluginSettings): void {
     if (!this.active) return;
     const next = { ...settings };
-    if (!this.options.controller.setEnabled(next.feature_enabled)) {
-      next.feature_enabled = this.options.controller.enabled;
+    if (!this.options.achievementController.setEnabled(next.feature_enabled)) {
+      next.feature_enabled = this.options.achievementController.enabled;
+    }
+    if (
+      !this.options.homeCarouselController.setEnabled(
+        next.home_carousel_fix_enabled,
+      )
+    ) {
+      next.home_carousel_fix_enabled = this.options.homeCarouselController.enabled;
     }
     this.options.setVerboseLogging(next.debug_logging);
     this.update({ settings: next });
@@ -144,7 +161,9 @@ export class SettingsCoordinator {
     const busyKey =
       operation === "feature"
         ? "featureBusy"
-        : operation === "debug"
+        : operation === "homeCarouselFix"
+          ? "homeCarouselFixBusy"
+          : operation === "debug"
           ? "debugBusy"
           : operation === "updateChannel"
             ? "updateChannelBusy"
@@ -158,9 +177,32 @@ export class SettingsCoordinator {
 
       if (operation === "feature") {
         const enabled = value as boolean;
-        if (!this.options.controller.setEnabled(enabled)) return;
+        if (!this.options.achievementController.setEnabled(enabled)) {
+          this.update({
+            settings: {
+              ...previous,
+              feature_enabled: this.options.achievementController.enabled,
+            },
+          });
+          return;
+        }
         this.update({
           settings: { ...previous, feature_enabled: enabled },
+        });
+      } else if (operation === "homeCarouselFix") {
+        const enabled = value as boolean;
+        if (!this.options.homeCarouselController.setEnabled(enabled)) {
+          this.update({
+            settings: {
+              ...previous,
+              home_carousel_fix_enabled:
+                this.options.homeCarouselController.enabled,
+            },
+          });
+          return;
+        }
+        this.update({
+          settings: { ...previous, home_carousel_fix_enabled: enabled },
         });
       } else if (operation === "debug") {
         const enabled = value as boolean;
@@ -182,6 +224,8 @@ export class SettingsCoordinator {
         let saved: PluginSettings;
         if (operation === "feature") {
           saved = await this.options.setFeatureEnabled(value as boolean);
+        } else if (operation === "homeCarouselFix") {
+          saved = await this.options.setHomeCarouselFixEnabled(value as boolean);
         } else if (operation === "debug") {
           saved = await this.options.setDebugLogging(value as boolean);
         } else if (operation === "updateChannel") {
