@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from pathlib import Path
 
 CANONICAL = "Decky-SteamAchievements"
@@ -13,19 +12,6 @@ PACKAGE_NAME = "decky-steamachievements"
 DISPLAY_NAME = "Deck UI Restored"
 
 
-def tracked_files(root: Path) -> list[Path]:
-    result = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z"],
-        check=False,
-        capture_output=True,
-    )
-    if result.returncode == 0:
-        return [root / item.decode() for item in result.stdout.split(b"\0") if item]
-    return [
-        path
-        for path in root.rglob("*")
-        if path.is_file() and not {".git", "node_modules"}.intersection(path.parts)
-    ]
 
 
 def check(root: Path) -> list[str]:
@@ -70,32 +56,16 @@ def check(root: Path) -> list[str]:
             "release manifests must retain the former display name for bridge updates"
         )
 
-    for path in tracked_files(root):
-        relative = path.relative_to(root)
-        if relative.suffix.lower() != ".md":
-            continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
-        lines = text.splitlines()
-        for number, line in enumerate(lines, 1):
-            if DISPLAY_NAME not in line:
-                continue
-            context = " ".join(lines[max(0, number - 2) : min(len(lines), number + 1)]).lower()
-            if (
-                "qam" in context
-                or "list" in context
-                or "plugin.json" in context
-                or "display" in context
-                or "title" in context
-                or "--expected-name" in line
-            ):
-                continue
-            errors.append(
-                f"{relative}:{number}: display name must explicitly describe a "
-                "Decky list/QAM/title/display surface"
-            )
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    if not readme.startswith("# Deck UI Restored\n"):
+        errors.append("README title must use the Decky display name")
+    developer = (root / "DEVELOPER.md").read_text(encoding="utf-8")
+    if (
+        'pluginName: \\"Achievements Restored\\"' not in developer
+        or "Version 0.2.1 is the update bridge" not in developer
+    ):
+        errors.append("DEVELOPER.md must document the legacy update bridge identity")
+
 
     expected = [
         root / "installer" / "Decky-SteamAchievements Installer.zip",

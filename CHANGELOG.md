@@ -10,7 +10,7 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
-Release publication reliability improvements.
+Expands the plugin into Deck UI Restored, a collection of reversible Steam Deck interface fixes.
 
 ### Added
 
@@ -18,6 +18,12 @@ Release publication reliability improvements.
   from nonfocused cards while controller focus remains in that carousel.
 
 ### Changed
+
+- Rename the Decky plugin-list and QAM title from Achievements Restored to Deck
+  UI Restored while keeping the existing ZIP, folder, settings, and release
+  asset names.
+- Preserve updates from older installations through a legacy release-manifest
+  identity and installer migration aliases.
 
 - Reorganize the QAM into Restore Mini Achievements, Home Carousel Title Fix,
   Settings, Updates, and Versions panels. The mini-achievement toggle is now
