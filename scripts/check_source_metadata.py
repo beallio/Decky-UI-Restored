@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-PLUGIN_DISPLAY_NAME = "Achievements Restored"
+PLUGIN_DISPLAY_NAME = "Deck UI Restored"
 PACKAGE_NAME = "decky-steamachievements"
 
 

@@ -27,8 +27,8 @@ import { SettingsCoordinator } from "./settingsCoordinator";
 import { createUpdatePoller } from "./runtime/updatePoller";
 import * as log from "./log";
 
-const PLUGIN_NAME = "Achievements Restored";
-const QAM_TITLE = "Achievements Restored";
+const PLUGIN_NAME = "Deck UI Restored";
+const QAM_TITLE = "Deck UI Restored";
 const DEFAULT_SETTINGS: PluginSettings = {
   feature_enabled: true,
   home_carousel_fix_enabled: false,

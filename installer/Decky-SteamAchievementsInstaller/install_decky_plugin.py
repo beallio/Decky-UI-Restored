@@ -51,8 +51,11 @@ DISTRIBUTION_PLUGIN_URL = "https://github.com/beallio/Decky-SteamAchievements"
 # stable release and require the normal confirmation prompt.
 DISTRIBUTION_ASSET = "Decky-SteamAchievements.zip"
 DISTRIBUTION_FOLDER = "Decky-SteamAchievements"
-DISTRIBUTION_PLUGIN_NAME = "Achievements Restored"
-DISTRIBUTION_LEGACY_PLUGIN_NAMES = ("Decky-SteamAchievements",)
+DISTRIBUTION_PLUGIN_NAME = "Deck UI Restored"
+DISTRIBUTION_LEGACY_PLUGIN_NAMES = (
+    "Achievements Restored",
+    "Decky-SteamAchievements",
+)
 DISTRIBUTION_RELEASE_TAG = ""
 DISTRIBUTION_INCLUDE_PRERELEASE = False
 DISTRIBUTION_EXPECTED_SHA256 = ""

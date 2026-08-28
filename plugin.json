@@ -1,16 +1,18 @@
 {
-  "name": "Achievements Restored",
+  "name": "Deck UI Restored",
   "author": "beallio",
   "flags": [],
   "api_version": 1,
   "publish": {
     "tags": [
-      "achievements",
-      "library",
+      "steamos",
+      "steam-deck",
       "gaming-mode",
-      "ui"
+      "ui",
+      "fixes",
+      "achievements"
     ],
-    "description": "Restores the achievement progress bar Valve removed from the Steam Deck game-details page (the \"ACHIEVEMENTS n/total\" bar next to Play Time).",
+    "description": "Restores native Steam Deck interface behavior affected by Steam updates, including mini achievements and Home carousel fixes.",
     "image": "https://raw.githubusercontent.com/beallio/Decky-SteamAchievements/main/assets/achievement-bar-restored.png"
   },
   "version": "0.2.1"

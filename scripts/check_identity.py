@@ -10,7 +10,7 @@ from pathlib import Path
 
 CANONICAL = "Decky-SteamAchievements"
 PACKAGE_NAME = "decky-steamachievements"
-DISPLAY_NAME = "Achievements" + " Restored"
+DISPLAY_NAME = "Deck UI Restored"
 
 
 def tracked_files(root: Path) -> list[Path]:
@@ -53,7 +53,7 @@ def check(root: Path) -> list[str]:
     )
     workflow_expectations = (
         "--expected-root Decky-SteamAchievements",
-        '--expected-name "Achievements Restored"',
+        '--expected-name "Deck UI Restored"',
     )
     for expected in workflow_expectations:
         if expected not in dev_release:
@@ -62,6 +62,12 @@ def check(root: Path) -> list[str]:
         errors.append(
             "dev-release package validation still expects the distribution name "
             "as plugin.json name"
+        )
+
+    package_script = (root / "scripts" / "package.mjs").read_text(encoding="utf-8")
+    if 'const UPDATE_MANIFEST_PLUGIN_NAME = "Achievements Restored";' not in package_script:
+        errors.append(
+            "release manifests must retain the former display name for bridge updates"
         )
 
     for path in tracked_files(root):

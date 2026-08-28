@@ -154,6 +154,15 @@ def test_validate_release_candidate(monkeypatch) -> None:
     assert candidate.sha256 == "a" * 64
     assert candidate.release_url == release["html_url"]
 
+    # Existing clients emit the former display name while renamed clients use the new one.
+    renamed_manifest = dict(manifest, pluginName="Deck UI Restored")
+
+    class RenamedClient:
+        def get_manifest(self, url):
+            return JsonResponse(status=200, headers={}, body=renamed_manifest)
+
+    assert validate_release_candidate(release, RenamedClient()) is not None
+
     # Draft releases are ignored
     draft_release = dict(release, draft=True)
     assert validate_release_candidate(draft_release, MockClient()) is None

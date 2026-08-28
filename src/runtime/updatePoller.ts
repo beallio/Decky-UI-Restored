@@ -100,7 +100,7 @@ export function createUpdatePoller(deps: UpdatePollerDeps): UpdatePoller {
       }
 
       deps.notify(
-        "Achievements Restored Update Available",
+        "Deck UI Restored Update Available",
         `v${result.candidate.version} is available. Open the plugin to install.`,
       );
       if (disposed) {

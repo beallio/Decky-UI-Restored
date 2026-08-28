@@ -10,7 +10,7 @@ from typing import Any
 
 
 SEMVER_RE = re.compile(r"\d+\.\d+\.\d+")
-PLUGIN_DISPLAY_NAME = "Achievements Restored"
+PLUGIN_DISPLAY_NAME = "Deck UI Restored"
 PACKAGE_NAME = "decky-steamachievements"
 
 

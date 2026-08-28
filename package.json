@@ -1,7 +1,7 @@
 {
   "name": "decky-steamachievements",
   "version": "0.2.1",
-  "description": "Restores the achievement progress bar Valve removed from the Steam Deck game-details page.",
+  "description": "Restores native Steam Deck interface behavior affected by Steam updates.",
   "type": "module",
   "scripts": {
     "build": "rollup -c",
