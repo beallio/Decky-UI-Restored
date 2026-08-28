@@ -10,6 +10,8 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-08-28
+
 Expands the plugin into Decky UI Restored, a collection of reversible Steam Deck interface fixes.
 
 ### Added
@@ -26,7 +28,6 @@ Expands the plugin into Decky UI Restored, a collection of reversible Steam Deck
   installer display-name aliases.
 - Rename the GitHub repository to `beallio/Decky-UI-Restored` while preserving
   redirects from both former repository slugs.
-
 - Reorganize the QAM into Restore Mini Achievements, Home Carousel Title Fix,
   Settings, Updates, and Versions panels. The mini-achievement toggle is now
   named Enable mini achievements.
