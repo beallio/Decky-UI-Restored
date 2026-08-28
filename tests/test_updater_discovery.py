@@ -102,7 +102,7 @@ def test_validate_release_candidate(monkeypatch) -> None:
         "draft": False,
         "prerelease": False,
         "tag_name": "v0.2.1",
-        "html_url": "https://github.com/beallio/Decky-SteamAchievements/releases/tag/v0.2.1",
+        "html_url": "https://github.com/beallio/Deck-UI-Restored/releases/tag/v0.2.1",
         "published_at": "2026-05-30T12:00:00Z",
         "assets": [
             {
@@ -501,7 +501,7 @@ def test_validate_release_candidate_manifest_name_strict(monkeypatch) -> None:
         "draft": False,
         "prerelease": False,
         "tag_name": "v0.2.1",
-        "html_url": "https://github.com/beallio/Decky-SteamAchievements/releases/tag/v0.2.1",
+        "html_url": "https://github.com/beallio/Deck-UI-Restored/releases/tag/v0.2.1",
         "assets": [
             {
                 "name": "Decky-SteamAchievements-v0.2.1.manifest.json",

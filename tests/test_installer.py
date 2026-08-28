@@ -27,7 +27,7 @@ def installer_module():
 
 def test_distribution_contract_is_canonical_and_stable(installer_module):
     assert installer_module.DISTRIBUTION_PLUGIN_URL == (
-        "https://github.com/beallio/Decky-SteamAchievements"
+        "https://github.com/beallio/Deck-UI-Restored"
     )
     assert installer_module.DISTRIBUTION_ASSET == "Decky-SteamAchievements.zip"
     assert installer_module.DISTRIBUTION_FOLDER == "Decky-SteamAchievements"
@@ -71,7 +71,7 @@ def test_default_github_resolution_uses_latest_stable_endpoint(
     )
 
     assert seen == [
-        "https://api.github.com/repos/beallio/Decky-SteamAchievements/releases/latest"
+        "https://api.github.com/repos/beallio/Deck-UI-Restored/releases/latest"
     ]
     assert resolved.release_tag == "v1.2.3"
     assert resolved.expected_sha256 == "a" * 64

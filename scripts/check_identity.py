@@ -10,6 +10,7 @@ from pathlib import Path
 CANONICAL = "Decky-SteamAchievements"
 PACKAGE_NAME = "decky-steamachievements"
 DISPLAY_NAME = "Deck UI Restored"
+GITHUB_REPOSITORY = "beallio/Deck-UI-Restored"
 
 
 
@@ -21,6 +22,12 @@ def check(root: Path) -> list[str]:
     lock = json.loads((root / "package-lock.json").read_text(encoding="utf-8"))
     if plugin.get("name") != DISPLAY_NAME:
         errors.append(f"plugin.json name must be {DISPLAY_NAME!r}")
+    expected_image = (
+        f"https://raw.githubusercontent.com/{GITHUB_REPOSITORY}/"
+        "main/assets/achievement-bar-restored.png"
+    )
+    if plugin.get("publish", {}).get("image") != expected_image:
+        errors.append("plugin.json image must use the canonical GitHub repository")
     if package.get("name") != PACKAGE_NAME:
         errors.append(f"package.json name must be {PACKAGE_NAME!r}")
     if lock.get("name") != PACKAGE_NAME or lock.get("packages", {}).get("", {}).get("name") != PACKAGE_NAME:
@@ -55,6 +62,28 @@ def check(root: Path) -> list[str]:
         errors.append(
             "release manifests must retain the former display name for bridge updates"
         )
+
+    repository_expectations = (
+        (
+            root / "backend" / "updater" / "client.py",
+            'repo: str = "Deck-UI-Restored"',
+        ),
+        (
+            root / "main.py",
+            'owner="beallio", repo="Deck-UI-Restored"',
+        ),
+        (
+            root / "installer" / "Decky-SteamAchievementsInstaller"
+            / "install_decky_plugin.py",
+            f'DISTRIBUTION_PLUGIN_URL = "https://github.com/{GITHUB_REPOSITORY}"',
+        ),
+    )
+    for path, expected_repository in repository_expectations:
+        if expected_repository not in path.read_text(encoding="utf-8"):
+            errors.append(
+                f"{path.relative_to(root)} must use GitHub repository "
+                f"{GITHUB_REPOSITORY}"
+            )
 
     readme = (root / "README.md").read_text(encoding="utf-8")
     if not readme.startswith("# Deck UI Restored\n"):

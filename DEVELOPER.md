@@ -139,10 +139,10 @@ display name `Deck UI Restored`.
 
 ## Display-name migration
 
-The distribution identity remains `Decky-SteamAchievements` for the repository,
-ZIP filename, ZIP root, installed folder, settings, logs, and release assets.
-Only the Decky list/QAM display identity changed from `Achievements Restored` to
-`Deck UI Restored`.
+The GitHub repository is `beallio/Deck-UI-Restored`. The distribution identity
+remains `Decky-SteamAchievements` for the ZIP filename, ZIP root, installed
+folder, settings, logs, and release assets. Only the Decky list/QAM display
+identity changed from `Achievements Restored` to `Deck UI Restored`.
 
 Version 0.2.1 is the update bridge. Release manifests deliberately retain
 `pluginName: \"Achievements Restored\"` so clients installed before the rename can
@@ -151,6 +151,10 @@ frontend installer handoff uses the new display name after the bridge is
 installed, and the Desktop installer treats both the former display name and
 the distribution name as migration aliases. Do not remove the former manifest
 identity until the supported installed-version floor has moved past the bridge.
+
+GitHub redirects the former repository URL after the rename. Do not reuse
+`beallio/Decky-SteamAchievements`; installed clients before this release depend
+on that redirect until they update to code that targets the new repository.
 
 ## Updater integrity contract
 

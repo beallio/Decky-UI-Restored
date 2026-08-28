@@ -10,7 +10,7 @@ No Konsole window is required.
 
 The installer downloads Decky-SteamAchievements.zip from the latest stable,
 non-prerelease Decky-SteamAchievements release at:
-  https://github.com/beallio/Decky-SteamAchievements
+  https://github.com/beallio/Deck-UI-Restored
 
 The rolling dev-build prerelease is intentionally ignored. If no stable release
 has been published yet, the installer will report that none is available.

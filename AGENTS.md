@@ -123,14 +123,17 @@ shipped mechanism).
 
 Two names, deliberately different. Do not "unify" them.
 
-- **Distribution: `Decky-SteamAchievements`** — matches the repository, ZIP filename, ZIP root,
-  installed directory, settings/runtime/log directory, installer artifacts, backend log namespace,
-  and release asset. Its npm spelling remains `decky-steamachievements`. These paths are
-  load-bearing for in-place updates and must stay stable.
+- **Distribution: `Decky-SteamAchievements`** — matches the ZIP filename, ZIP root, installed
+  directory, settings/runtime/log directory, installer artifacts, backend log namespace, and
+  release asset. Its npm spelling remains `decky-steamachievements`. These paths are load-bearing
+  for in-place updates and must stay stable.
 - **Decky display: `Deck UI Restored`** — lives in `plugin.json` `name` and the frontend
   registration/title constants. Decky Loader overwrites `definePlugin().name` with the manifest
   name and renders that value in its plugin list; `titleView` uses the same display text for the
   opened QAM panel.
+- **GitHub repository: `beallio/Deck-UI-Restored`** — repository, badges, updater, store image,
+  and Desktop installer URLs use this slug. GitHub redirects the former repository URL for older
+  installed clients; never reuse the old slug.
 
 Decky derives `DECKY_PLUGIN_SETTINGS_DIR`, runtime data, and logs from the archive/install folder,
 not `plugin.json.name`. `scripts/package.mjs` therefore fixes the archive root and asset name to

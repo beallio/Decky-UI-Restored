@@ -1,8 +1,8 @@
 # Deck UI Restored
 
-[![License](https://img.shields.io/github/license/beallio/Decky-SteamAchievements)](LICENSE)
-[![Latest release](https://img.shields.io/github/v/release/beallio/Decky-SteamAchievements?display_name=tag)](https://github.com/beallio/Decky-SteamAchievements/releases/latest)
-[![CI](https://github.com/beallio/Decky-SteamAchievements/actions/workflows/ci.yml/badge.svg)](https://github.com/beallio/Decky-SteamAchievements/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/beallio/Deck-UI-Restored)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/beallio/Deck-UI-Restored?display_name=tag)](https://github.com/beallio/Deck-UI-Restored/releases/latest)
+[![CI](https://github.com/beallio/Deck-UI-Restored/actions/workflows/ci.yml/badge.svg)](https://github.com/beallio/Deck-UI-Restored/actions/workflows/ci.yml)
 
 Deck UI Restored is a Decky Loader plugin that fixes Steam Deck interface problems caused by Steam updates. Each fix has its own switch, so you can use only the ones you want.
 

@@ -45,7 +45,7 @@ from typing import Any, BinaryIO, Mapping, NoReturn, Sequence
 #     python3 install_decky_plugin.py
 #
 # A command-line source, when provided, overrides this value.
-DISTRIBUTION_PLUGIN_URL = "https://github.com/beallio/Decky-SteamAchievements"
+DISTRIBUTION_PLUGIN_URL = "https://github.com/beallio/Deck-UI-Restored"
 
 # Optional distribution defaults. Leave these empty/False to use the latest
 # stable release and require the normal confirmation prompt.

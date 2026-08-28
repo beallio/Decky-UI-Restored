@@ -60,7 +60,7 @@ class ReleaseClient(Protocol):
 
 
 class GitHubReleaseClient:
-    def __init__(self, owner: str = "beallio", repo: str = "Decky-SteamAchievements") -> None:
+    def __init__(self, owner: str = "beallio", repo: str = "Deck-UI-Restored") -> None:
         self.owner = owner
         self.repo = repo
         self._user_agent = _get_user_agent()
