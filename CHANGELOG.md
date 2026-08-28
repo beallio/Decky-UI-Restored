@@ -12,6 +12,17 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 Release publication reliability improvements.
 
+### Added
+
+- Add an opt-in Home Carousel Title Fix that removes stale source-state classes
+  from nonfocused cards while controller focus remains in that carousel.
+
+### Changed
+
+- Reorganize the QAM into Restore Mini Achievements, Home Carousel Title Fix,
+  Settings, Updates, and Versions panels. The mini-achievement toggle is now
+  named Enable mini achievements.
+
 ### Fixed
 
 - Build stable ZIP, checksum, and manifest assets only after every mutating quality gate so

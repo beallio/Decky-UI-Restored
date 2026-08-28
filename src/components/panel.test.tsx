@@ -35,7 +35,8 @@ vi.mock("../utils/deckyInstaller", () => ({
 }));
 
 import { FocusablePanel } from "./FocusablePanel";
-import { DescriptionSection } from "./DescriptionSection";
+import { RestoreMiniAchievementsSection } from "./RestoreMiniAchievementsSection";
+import { HomeCarouselTitleFixSection } from "./HomeCarouselTitleFixSection";
 import { SettingsSection } from "./SettingsSection";
 import { VersionsSection } from "./VersionsSection";
 import { PluginUpdateSection } from "./PluginUpdateSection";
@@ -55,10 +56,15 @@ function collect(node: any, type: string, found: any[] = []): any[] {
 
 describe("focusable QAM sections", () => {
   it("starts at the restored description without a focus highlight", () => {
-    const tree = DescriptionSection({});
+    const tree = RestoreMiniAchievementsSection({
+      featureEnabled: true,
+      settingsLoaded: true,
+      featureBusy: false,
+      onFeatureChange: vi.fn(),
+    });
     const fields = collect(tree, "Field");
 
-    expect(tree.props.title).toBeUndefined();
+    expect(tree.props.title).toBe("Restore Mini Achievements");
     expect(fields).toHaveLength(1);
     expect(fields[0].props.focusable).toBe(true);
     expect(fields[0].props.preferredFocus).toBe(true);
@@ -74,7 +80,12 @@ describe("focusable QAM sections", () => {
   });
 
   it("resets the outer QAM scroller after Steam's focus scroll settles", () => {
-    const tree = DescriptionSection({});
+    const tree = RestoreMiniAchievementsSection({
+      featureEnabled: true,
+      settingsLoaded: true,
+      featureBusy: false,
+      onFeatureChange: vi.fn(),
+    });
     const field = collect(tree, "Field")[0];
     let onScrollEnd: (() => void) | undefined;
     let fallbackReveal: (() => void) | undefined;
@@ -128,21 +139,49 @@ describe("focusable QAM sections", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders two independently focusable settings with concise copy", () => {
-    const tree = SettingsSection({
+  it("renders a focusable mini-achievement toggle with the requested copy", () => {
+    const tree = RestoreMiniAchievementsSection({
       featureEnabled: true,
-      debugLogging: false,
       settingsLoaded: true,
       featureBusy: false,
-      debugBusy: false,
       onFeatureChange: vi.fn(),
+    });
+    const toggle = collect(tree, "ToggleField")[0];
+    expect(toggle.props.label).toBe("Enable mini achievements");
+    expect(toggle.props.description).toBe(
+      "Shows achievement progress on game details pages.",
+    );
+    expect(toggle.props.highlightOnFocus).toBe(true);
+  });
+
+  it("renders the opt-in Home-carousel fix with independent disabled state", () => {
+    const tree = HomeCarouselTitleFixSection({
+      enabled: false,
+      settingsLoaded: true,
+      busy: true,
+      onChange: vi.fn(),
+    });
+    const description = collect(tree, "Field")[0];
+    const toggle = collect(tree, "ToggleField")[0];
+    expect(tree.props.title).toBe("Home Carousel Title Fix");
+    expect(description.props.focusable).toBe(true);
+    expect(toggle.props.label).toBe("Fix stale Home carousel state");
+    expect(toggle.props.disabled).toBe(true);
+    expect(toggle.props.highlightOnFocus).toBe(true);
+    expect(JSON.stringify(tree)).toContain(
+      "Removes the stale title, glow, and raised tile after controller focus moves to another Home carousel card. Preserves CSSLoader theme styling.",
+    );
+  });
+
+  it("renders a focusable Settings panel with only debug logging", () => {
+    const tree = SettingsSection({
+      debugLogging: false,
+      settingsLoaded: true,
+      debugBusy: false,
       onDebugChange: vi.fn(),
     });
     const toggles = collect(tree, "ToggleField");
-    expect(toggles.map((entry) => entry.props.label)).toEqual([
-      "Achievement bar",
-      "Debug logging",
-    ]);
+    expect(toggles.map((entry) => entry.props.label)).toEqual(["Debug logging"]);
     expect(toggles.every((entry) => entry.props.highlightOnFocus === true)).toBe(true);
     const copy = toggles
       .flatMap((entry) => [entry.props.label, entry.props.description])
@@ -290,29 +329,33 @@ describe("focusable QAM sections", () => {
     expect(tree.props["flow-children"]).toBe("down");
   });
 
-  it("orders Description, Settings, Updates, then Versions", () => {
+  it("orders Restore, Home Carousel, Settings, Updates, then Versions", () => {
     const tree = PluginPanelContent({
       descriptionRef: { current: null },
       settings: {
         feature_enabled: true,
+        home_carousel_fix_enabled: false,
         debug_logging: false,
         update_channel: "stable",
         automatic_update_checks: true,
       },
       settingsLoaded: true,
       featureBusy: false,
+      homeCarouselFixBusy: false,
       debugBusy: false,
       updateChannelBusy: false,
       automaticChecksBusy: false,
       versions: { plugin: "0.1.1", decky: "3.2.6", steamos: "3.8" },
       onFeatureChange: vi.fn(),
+      onHomeCarouselFixChange: vi.fn(),
       onDebugChange: vi.fn(),
       onUpdateChannelChange: vi.fn(),
       onAutomaticChecksChange: vi.fn(),
       onInstallVersionConfirmed: vi.fn(),
     });
     expect(tree.props.children.map((child: any) => child.type)).toEqual([
-      DescriptionSection,
+      RestoreMiniAchievementsSection,
+      HomeCarouselTitleFixSection,
       SettingsSection,
       PluginUpdateSection,
       VersionsSection,

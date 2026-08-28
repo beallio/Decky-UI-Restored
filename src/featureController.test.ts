@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { AchievementFeatureController } from "./featureController";
+import { FeatureController } from "./featureController";
 
-describe("AchievementFeatureController", () => {
+describe("FeatureController", () => {
   it("installs once, disables once, and supports re-enable", () => {
     const firstDispose = vi.fn();
     const secondDispose = vi.fn();
@@ -9,7 +9,7 @@ describe("AchievementFeatureController", () => {
       .fn<() => () => void>()
       .mockReturnValueOnce(firstDispose)
       .mockReturnValueOnce(secondDispose);
-    const controller = new AchievementFeatureController(installer);
+    const controller = new FeatureController(installer);
 
     expect(controller.setEnabled(true)).toBe(true);
     expect(controller.setEnabled(true)).toBe(true);
@@ -25,13 +25,13 @@ describe("AchievementFeatureController", () => {
 
   it("fails closed when installation or disposal throws", () => {
     const onError = vi.fn();
-    const controller = new AchievementFeatureController(() => {
+    const controller = new FeatureController(() => {
       throw new Error("install failed");
     }, onError);
     expect(controller.setEnabled(true)).toBe(false);
     expect(controller.enabled).toBe(false);
 
-    const disposing = new AchievementFeatureController(
+    const disposing = new FeatureController(
       () => () => {
         throw new Error("dispose failed");
       },
@@ -46,7 +46,7 @@ describe("AchievementFeatureController", () => {
   it("makes disposal terminal so late async work cannot reinstall the patch", () => {
     const disposePatch = vi.fn();
     const installer = vi.fn(() => disposePatch);
-    const controller = new AchievementFeatureController(installer);
+    const controller = new FeatureController(installer);
 
     expect(controller.setEnabled(true)).toBe(true);
     controller.dispose();
