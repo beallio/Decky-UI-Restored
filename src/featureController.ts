@@ -1,4 +1,4 @@
-export class AchievementFeatureController {
+export class FeatureController {
   private disposer: (() => void) | undefined;
   private disposed = false;
 

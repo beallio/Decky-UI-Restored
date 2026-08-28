@@ -9,6 +9,9 @@ import { deflateRawSync } from "node:zlib";
 // archive root determines the installed directory. Keep the distribution name
 // stable so changing the list label cannot create a second on-device install.
 const PLUGIN_FOLDER_NAME = "Decky-SteamAchievements";
+// Keep the former display name in release manifests for the 0.2.1 bridge so
+// already-installed clients can discover and install the renamed package.
+const UPDATE_MANIFEST_PLUGIN_NAME = "Achievements Restored";
 const CRC_TABLE = makeCrcTable();
 
 // Mirrors the version grammar the self-updater parses (backend discovery):
@@ -127,7 +130,7 @@ function emitReleaseMetadata({ repoRoot, zipPath, version, packageJson, pluginJs
 
   const manifest = {
     schemaVersion: 1,
-    pluginName: pluginJson.name,
+    pluginName: UPDATE_MANIFEST_PLUGIN_NAME,
     packageName: packageJson.name,
     version,
     sourceVersion: version,

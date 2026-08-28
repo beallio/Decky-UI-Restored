@@ -44,7 +44,7 @@ def main() -> int:
         installer = archive.read(
             "Decky-SteamAchievementsInstaller/install_decky_plugin.py"
         ).decode("utf-8")
-        if 'DISTRIBUTION_PLUGIN_URL = "https://github.com/beallio/Decky-SteamAchievements"' not in installer:
+        if 'DISTRIBUTION_PLUGIN_URL = "https://github.com/beallio/Deck-UI-Restored"' not in installer:
             raise SystemExit("installer repository URL differs from the canonical repository")
         if 'DISTRIBUTION_ASSET = "Decky-SteamAchievements.zip"' not in installer:
             raise SystemExit("installer asset differs from the canonical plugin ZIP")

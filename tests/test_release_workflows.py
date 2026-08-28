@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import shutil
 import subprocess
@@ -130,6 +131,22 @@ def test_immutable_dev_workflow_enforces_semver_identity_and_three_assets() -> N
     assert 'Decky-SteamAchievements-$DEV_TAG.manifest.json' in content
     assert "--prerelease" in content
     assert 'git rev-parse "refs/tags/$DEV_TAG"' in content
+
+
+def test_display_rename_keeps_bridge_manifest_identity() -> None:
+    plugin = json.loads(read("plugin.json"))
+    package_script = read("scripts/package.mjs")
+    rolling = read(".github/workflows/dev-release.yml")
+    immutable = read(".github/workflows/immutable-dev-release.yml")
+    stable = read(".github/workflows/release.yml")
+
+    assert plugin["name"] == "Deck UI Restored"
+    assert 'const UPDATE_MANIFEST_PLUGIN_NAME = "Achievements Restored";' in package_script
+    assert "pluginName: UPDATE_MANIFEST_PLUGIN_NAME" in package_script
+    for workflow in (rolling, immutable, stable):
+        assert '--expected-name "Deck UI Restored"' in workflow
+    assert 'm.pluginName!=="Achievements Restored"' in immutable
+    assert '--title "Deck UI Restored v$DEV_VERSION (Development)"' in immutable
 
 
 def test_request_helper_validates_before_dispatch() -> None:

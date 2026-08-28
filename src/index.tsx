@@ -9,6 +9,7 @@ import {
   setAutomaticUpdateChecksCall,
   setDebugLogging,
   setFeatureEnabled,
+  setHomeCarouselFixEnabled,
   setUpdateChannelCall,
   checkForPluginUpdateCall,
   markUpdateNotifiedCall,
@@ -16,19 +17,21 @@ import {
   type Versions,
 } from "./backend";
 import { installAchievementBarPatch } from "./achievementBar";
+import { installHomeCarouselTitleFix } from "./homeCarouselTitleFix";
 import { PluginPanelContent } from "./components/PluginPanelContent";
 import {
   resetDescriptionScroll,
-} from "./components/DescriptionSection";
-import { AchievementFeatureController } from "./featureController";
+} from "./components/RestoreMiniAchievementsSection";
+import { FeatureController } from "./featureController";
 import { SettingsCoordinator } from "./settingsCoordinator";
 import { createUpdatePoller } from "./runtime/updatePoller";
 import * as log from "./log";
 
-const PLUGIN_NAME = "Achievements Restored";
-const QAM_TITLE = "Achievements Restored";
+const PLUGIN_NAME = "Deck UI Restored";
+const QAM_TITLE = "Deck UI Restored";
 const DEFAULT_SETTINGS: PluginSettings = {
   feature_enabled: true,
+  home_carousel_fix_enabled: false,
   debug_logging: false,
   update_channel: "stable",
   automatic_update_checks: true,
@@ -43,6 +46,7 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
     settings,
     loaded: settingsLoaded,
     featureBusy,
+    homeCarouselFixBusy,
     debugBusy,
     updateChannelBusy,
     automaticChecksBusy,
@@ -97,6 +101,10 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
     await coordinator.setDebugLogging(enabled);
   };
 
+  const saveHomeCarouselFix = async (enabled: boolean) => {
+    await coordinator.setHomeCarouselFixEnabled(enabled);
+  };
+
   const confirmInstalledPluginVersion = (version: string) => {
     setVersions((current) => ({ ...current, plugin: version }));
   };
@@ -107,11 +115,13 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
       settings={settings}
       settingsLoaded={settingsLoaded}
       featureBusy={featureBusy}
+      homeCarouselFixBusy={homeCarouselFixBusy}
       debugBusy={debugBusy}
       updateChannelBusy={updateChannelBusy}
       automaticChecksBusy={automaticChecksBusy}
       versions={versions}
       onFeatureChange={(enabled) => void saveFeature(enabled)}
+      onHomeCarouselFixChange={(enabled) => void saveHomeCarouselFix(enabled)}
       onDebugChange={(enabled) => void saveDebug(enabled)}
       onUpdateChannelChange={(channel) => void coordinator.setUpdateChannel(channel)}
       onAutomaticChecksChange={(enabled) =>
@@ -124,15 +134,21 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
 
 export default definePlugin(() => {
   log.info("plugin", "loaded");
-  const controller = new AchievementFeatureController(
+  const achievementController = new FeatureController(
     installAchievementBarPatch,
     (error) => log.error("plugin", "achievement patch lifecycle failed", error),
   );
+  const homeCarouselController = new FeatureController(
+    installHomeCarouselTitleFix,
+    (error) => log.error("plugin", "Home-carousel fix lifecycle failed", error),
+  );
   const coordinator = new SettingsCoordinator({
-    controller,
+    achievementController,
+    homeCarouselController,
     defaults: DEFAULT_SETTINGS,
     loadSettings: getSettings,
     setFeatureEnabled,
+    setHomeCarouselFixEnabled,
     setDebugLogging,
     setUpdateChannel: setUpdateChannelCall,
     setAutomaticUpdateChecks: setAutomaticUpdateChecksCall,

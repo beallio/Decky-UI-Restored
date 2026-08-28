@@ -10,7 +10,26 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
-Release publication reliability improvements.
+Expands the plugin into Deck UI Restored, a collection of reversible Steam Deck interface fixes.
+
+### Added
+
+- Add an opt-in Home Carousel Title Fix that removes stale source-state classes
+  from nonfocused cards while controller focus remains in that carousel.
+
+### Changed
+
+- Rename the Decky plugin-list and QAM title from Achievements Restored to Deck
+  UI Restored while keeping the existing ZIP, folder, settings, and release
+  asset names.
+- Preserve updates from older installations through a legacy release-manifest
+  identity and installer migration aliases.
+- Rename the GitHub repository to `beallio/Deck-UI-Restored` while preserving
+  redirects for older updater clients.
+
+- Reorganize the QAM into Restore Mini Achievements, Home Carousel Title Fix,
+  Settings, Updates, and Versions panels. The mini-achievement toggle is now
+  named Enable mini achievements.
 
 ### Fixed
 

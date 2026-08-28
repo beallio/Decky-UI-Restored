@@ -5,27 +5,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from pathlib import Path
 
 CANONICAL = "Decky-SteamAchievements"
 PACKAGE_NAME = "decky-steamachievements"
-DISPLAY_NAME = "Achievements" + " Restored"
+DISPLAY_NAME = "Deck UI Restored"
+GITHUB_REPOSITORY = "beallio/Deck-UI-Restored"
 
 
-def tracked_files(root: Path) -> list[Path]:
-    result = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z"],
-        check=False,
-        capture_output=True,
-    )
-    if result.returncode == 0:
-        return [root / item.decode() for item in result.stdout.split(b"\0") if item]
-    return [
-        path
-        for path in root.rglob("*")
-        if path.is_file() and not {".git", "node_modules"}.intersection(path.parts)
-    ]
 
 
 def check(root: Path) -> list[str]:
@@ -35,6 +22,12 @@ def check(root: Path) -> list[str]:
     lock = json.loads((root / "package-lock.json").read_text(encoding="utf-8"))
     if plugin.get("name") != DISPLAY_NAME:
         errors.append(f"plugin.json name must be {DISPLAY_NAME!r}")
+    expected_image = (
+        f"https://raw.githubusercontent.com/{GITHUB_REPOSITORY}/"
+        "main/assets/achievement-bar-restored.png"
+    )
+    if plugin.get("publish", {}).get("image") != expected_image:
+        errors.append("plugin.json image must use the canonical GitHub repository")
     if package.get("name") != PACKAGE_NAME:
         errors.append(f"package.json name must be {PACKAGE_NAME!r}")
     if lock.get("name") != PACKAGE_NAME or lock.get("packages", {}).get("", {}).get("name") != PACKAGE_NAME:
@@ -53,7 +46,7 @@ def check(root: Path) -> list[str]:
     )
     workflow_expectations = (
         "--expected-root Decky-SteamAchievements",
-        '--expected-name "Achievements Restored"',
+        '--expected-name "Deck UI Restored"',
     )
     for expected in workflow_expectations:
         if expected not in dev_release:
@@ -64,32 +57,44 @@ def check(root: Path) -> list[str]:
             "as plugin.json name"
         )
 
-    for path in tracked_files(root):
-        relative = path.relative_to(root)
-        if relative.suffix.lower() != ".md":
-            continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
-        lines = text.splitlines()
-        for number, line in enumerate(lines, 1):
-            if DISPLAY_NAME not in line:
-                continue
-            context = " ".join(lines[max(0, number - 2) : min(len(lines), number + 1)]).lower()
-            if (
-                "qam" in context
-                or "list" in context
-                or "plugin.json" in context
-                or "display" in context
-                or "title" in context
-                or "--expected-name" in line
-            ):
-                continue
+    package_script = (root / "scripts" / "package.mjs").read_text(encoding="utf-8")
+    if 'const UPDATE_MANIFEST_PLUGIN_NAME = "Achievements Restored";' not in package_script:
+        errors.append(
+            "release manifests must retain the former display name for bridge updates"
+        )
+
+    repository_expectations = (
+        (
+            root / "backend" / "updater" / "client.py",
+            'repo: str = "Deck-UI-Restored"',
+        ),
+        (
+            root / "main.py",
+            'owner="beallio", repo="Deck-UI-Restored"',
+        ),
+        (
+            root / "installer" / "Decky-SteamAchievementsInstaller"
+            / "install_decky_plugin.py",
+            f'DISTRIBUTION_PLUGIN_URL = "https://github.com/{GITHUB_REPOSITORY}"',
+        ),
+    )
+    for path, expected_repository in repository_expectations:
+        if expected_repository not in path.read_text(encoding="utf-8"):
             errors.append(
-                f"{relative}:{number}: display name must explicitly describe a "
-                "Decky list/QAM/title/display surface"
+                f"{path.relative_to(root)} must use GitHub repository "
+                f"{GITHUB_REPOSITORY}"
             )
+
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    if not readme.startswith("# Deck UI Restored\n"):
+        errors.append("README title must use the Decky display name")
+    developer = (root / "DEVELOPER.md").read_text(encoding="utf-8")
+    if (
+        'pluginName: \\"Achievements Restored\\"' not in developer
+        or "Version 0.2.1 is the update bridge" not in developer
+    ):
+        errors.append("DEVELOPER.md must document the legacy update bridge identity")
+
 
     expected = [
         root / "installer" / "Decky-SteamAchievements Installer.zip",

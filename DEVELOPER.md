@@ -2,19 +2,59 @@
 
 ## Technical background
 
-The frontend restores Valve's own `MiniAchievements` component by supplying the
-`onSeek` prop its render guard requires. Do not reimplement the achievement bar
-unless a placement Valve's component cannot reach is explicitly required.
+Deck UI Restored is a collection of independent, reversible Steam UI regression
+fixes. Each feature has its own persisted setting and lifecycle controller. A
+failed patch must log and stop without crashing Steam UI.
 
-The plugin also has a persistent backend settings contract, a reversible
-frontend feature lifecycle, runtime version discovery, and a manifest-validated
-self-updater. Settings default to achievement restoration enabled, debug logging
-disabled, the stable update channel, and automatic update checks enabled. The
-QAM settings, updater controls, and all three version rows must remain
-independently gamepad-focusable.
+### Mini achievements
 
-The live-verified root cause and runtime constraints are documented in
+Valve's `MiniAchievements` component still ships with its native CSS and live
+`GetAchievements(appid)` data. Steam changelist 10546225 added this render guard:
+
+```js
+if (!this.props.onSeek) return null;
+```
+
+The Steam Deck game-details `PlayBar` supplies `onSeek: undefined`, so the
+component remains mounted but emits no DOM. `src/achievementBar.tsx` captures the
+class read-only from the Big Picture React fiber tree, patches its own `render`
+method, supplies a real section-seek handler, and refreshes mounted instances.
+It does not remount the app-details tree or reimplement the progress bar.
+
+Keep Valve's guards for missing achievement totals and zero-progress
+uninstalled games. The live-verified root cause, Steam build constraints, and
+failed approaches are documented in
 [`docs/deep-patch-notes.md`](docs/deep-patch-notes.md).
+
+### Home carousel title
+
+Steam can leave three React-generated hover classes on the first Home carousel
+card after controller focus moves:
+
+- BasicGameCarousel `ShowAsHovered` on `CarouselGameLabelWrapper`;
+- BasicGameCarousel `ShowAsHovered` on `CarouselCapsuleBackgroundGlow`;
+- AppPortrait `ShowAsHovered` on `LibraryItemBox`.
+
+`src/homeCarouselTitleFix.ts` captures webpack require from SharedJSContext,
+resolves CSS modules by complete export-key signatures, and observes only
+mounted `BasicGameCarousel` roots in the Big Picture document. While a media
+card itself has `.gpfocuswithin`, it removes those three tokens from sibling
+cards. It never writes styles or replaces whole class names, so Steam and
+CSSLoader themes keep control of filters, transforms, shadows, and opacity.
+
+Module IDs and CSS hashes are build-specific and must never be hardcoded.
+Resolution retries with bounded backoff. Observer work is coalesced and guarded
+by a circuit breaker. Teardown restores only tracked tokens still present in
+the DOM element's live React `className`.
+
+### Settings and QAM
+
+Settings default to mini-achievement restoration enabled, the Home carousel fix
+disabled, debug logging disabled, the stable update channel, and automatic
+update checks enabled. `SettingsCoordinator` serializes writes, applies
+optimistic state with rollback, and disposes both feature controllers
+independently. QAM descriptions, toggles, updater controls, and version rows
+must remain gamepad-focusable.
 
 ## Environment
 
@@ -92,9 +132,42 @@ bash installer/build_bundle.sh
 
 The command creates `installer/Decky-SteamAchievements Installer.zip`. Keep the
 configured GitHub repository URL and exact `Decky-SteamAchievements.zip`
-distribution asset aligned with the release workflow. The installer bundle, plugin ZIP, archive
-root, and installed directory use `Decky-SteamAchievements`; Decky's plugin list and opened QAM
-panel use the manifest display name `Achievements Restored`.
+distribution asset aligned with the release workflow. The installer bundle,
+plugin ZIP, archive root, and installed directory use
+`Decky-SteamAchievements`; Decky's plugin list and opened QAM panel use the
+display name `Deck UI Restored`.
+
+## Display-name migration
+
+The GitHub repository is `beallio/Deck-UI-Restored`. The distribution identity
+remains `Decky-SteamAchievements` for the ZIP filename, ZIP root, installed
+folder, settings, logs, and release assets. Only the Decky list/QAM display
+identity changed from `Achievements Restored` to `Deck UI Restored`.
+
+Version 0.2.1 is the update bridge. Release manifests deliberately retain
+`pluginName: \"Achievements Restored\"` so clients installed before the rename can
+discover the bridge release. Updater discovery accepts both display names. The
+frontend installer handoff uses the new display name after the bridge is
+installed, and the Desktop installer treats both the former display name and
+the distribution name as migration aliases. Do not remove the former manifest
+identity until the supported installed-version floor has moved past the bridge.
+
+GitHub redirects the former repository URL after the rename. Do not reuse
+`beallio/Decky-SteamAchievements`; installed clients before this release depend
+on that redirect until they update to code that targets the new repository.
+
+## Updater integrity contract
+
+Immutable releases include the canonical ZIP, a whole-archive SHA-256 sidecar,
+and a schema-1 release manifest. Discovery validates the update identity,
+channel, version/tag agreement, exact asset name, and digest before offering an
+update. The backend repeats validation immediately before handoff. The plugin
+does not overwrite itself; it passes the validated URL, version, digest, and
+current Decky display name to Decky Loader's supported confirmation flow.
+
+Pending installs are recorded before handoff and reconciled after Decky reloads.
+Runtime updater state is separate from user settings and is protected by a
+bounded `fcntl.flock` plus atomic replace writes.
 
 ## Release channels
 
@@ -117,6 +190,8 @@ panel use the manifest display name `Achievements Restored`.
 
 - `src/index.tsx` — plugin entry and QAM content.
 - `src/achievementBar.tsx` — achievement restoration and cleanup lifecycle.
+- `src/homeCarouselTitleFix.ts` — Home carousel module discovery, cleanup,
+  observer lifecycle, and React-aware teardown.
 - `src/components/` — focusable QAM presentation components.
 - `src/controllers/pluginUpdate*` — updater UI state machine and handoff lifecycle.
 - `src/runtime/updatePoller.ts` — plugin-scope six-hour background polling.

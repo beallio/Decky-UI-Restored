@@ -102,7 +102,7 @@ def test_validate_release_candidate(monkeypatch) -> None:
         "draft": False,
         "prerelease": False,
         "tag_name": "v0.2.1",
-        "html_url": "https://github.com/beallio/Decky-SteamAchievements/releases/tag/v0.2.1",
+        "html_url": "https://github.com/beallio/Deck-UI-Restored/releases/tag/v0.2.1",
         "published_at": "2026-05-30T12:00:00Z",
         "assets": [
             {
@@ -153,6 +153,15 @@ def test_validate_release_candidate(monkeypatch) -> None:
     assert candidate.artifact_url == "https://github.com/zip"
     assert candidate.sha256 == "a" * 64
     assert candidate.release_url == release["html_url"]
+
+    # Existing clients emit the former display name while renamed clients use the new one.
+    renamed_manifest = dict(manifest, pluginName="Deck UI Restored")
+
+    class RenamedClient:
+        def get_manifest(self, url):
+            return JsonResponse(status=200, headers={}, body=renamed_manifest)
+
+    assert validate_release_candidate(release, RenamedClient()) is not None
 
     # Draft releases are ignored
     draft_release = dict(release, draft=True)
@@ -492,7 +501,7 @@ def test_validate_release_candidate_manifest_name_strict(monkeypatch) -> None:
         "draft": False,
         "prerelease": False,
         "tag_name": "v0.2.1",
-        "html_url": "https://github.com/beallio/Decky-SteamAchievements/releases/tag/v0.2.1",
+        "html_url": "https://github.com/beallio/Deck-UI-Restored/releases/tag/v0.2.1",
         "assets": [
             {
                 "name": "Decky-SteamAchievements-v0.2.1.manifest.json",

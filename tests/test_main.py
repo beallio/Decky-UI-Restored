@@ -39,6 +39,7 @@ def test_settings_defaults_and_persistence(plugin_module, tmp_path: Path):
 
     assert asyncio.run(plugin.get_settings()) == {
         "feature_enabled": True,
+        "home_carousel_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -46,12 +47,21 @@ def test_settings_defaults_and_persistence(plugin_module, tmp_path: Path):
 
     assert asyncio.run(plugin.set_feature_enabled(False)) == {
         "feature_enabled": False,
+        "home_carousel_fix_enabled": False,
+        "debug_logging": False,
+        "update_channel": "stable",
+        "automatic_update_checks": True,
+    }
+    assert asyncio.run(plugin.set_home_carousel_fix_enabled(True)) == {
+        "feature_enabled": False,
+        "home_carousel_fix_enabled": True,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
     }
     assert asyncio.run(plugin.set_debug_logging(True)) == {
         "feature_enabled": False,
+        "home_carousel_fix_enabled": True,
         "debug_logging": True,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -60,6 +70,7 @@ def test_settings_defaults_and_persistence(plugin_module, tmp_path: Path):
     path = tmp_path / "settings" / "settings.json"
     assert json.loads(path.read_text(encoding="utf-8")) == {
         "feature_enabled": False,
+        "home_carousel_fix_enabled": True,
         "debug_logging": True,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -75,6 +86,7 @@ def test_settings_recover_from_malformed_and_invalid_values(plugin_module, tmp_p
 
     assert asyncio.run(module.Plugin().get_settings()) == {
         "feature_enabled": True,
+        "home_carousel_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -82,6 +94,7 @@ def test_settings_recover_from_malformed_and_invalid_values(plugin_module, tmp_p
     path.write_text("not json", encoding="utf-8")
     assert asyncio.run(module.Plugin().get_settings()) == {
         "feature_enabled": True,
+        "home_carousel_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -99,6 +112,7 @@ def test_old_settings_migrate_on_next_mutation_without_reset(plugin_module, tmp_
     plugin = module.Plugin()
     assert asyncio.run(plugin.get_settings()) == {
         "feature_enabled": False,
+        "home_carousel_fix_enabled": False,
         "debug_logging": True,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -111,6 +125,7 @@ def test_old_settings_migrate_on_next_mutation_without_reset(plugin_module, tmp_
     asyncio.run(plugin.set_update_channel("development"))
     assert json.loads(path.read_text(encoding="utf-8")) == {
         "feature_enabled": False,
+        "home_carousel_fix_enabled": False,
         "debug_logging": True,
         "update_channel": "development",
         "automatic_update_checks": True,
@@ -174,6 +189,7 @@ def test_independent_settings_holders_preserve_overlapping_mutations(
         (tmp_path / "settings" / "settings.json").read_text(encoding="utf-8")
     ) == {
         "feature_enabled": False,
+        "home_carousel_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "development",
         "automatic_update_checks": True,
@@ -191,6 +207,14 @@ def test_invalid_updater_settings_normalize_to_defaults(plugin_module, tmp_path:
     settings = asyncio.run(module.Plugin().get_settings())
     assert settings["update_channel"] == "stable"
     assert settings["automatic_update_checks"] is True
+
+
+def test_home_carousel_fix_rejects_non_boolean_values(plugin_module):
+    module, _decky = plugin_module
+    plugin = module.Plugin()
+
+    with pytest.raises(TypeError, match="home_carousel_fix_enabled must be a boolean"):
+        asyncio.run(plugin.set_home_carousel_fix_enabled("true"))
 
 
 def test_update_rpcs_persist_separate_runtime_state(plugin_module, tmp_path: Path):

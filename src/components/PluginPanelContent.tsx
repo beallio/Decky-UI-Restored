@@ -1,8 +1,9 @@
 import type { Ref } from "react";
 import type { PluginSettings, UpdateChannel, Versions } from "../backend";
-import { DescriptionSection } from "./DescriptionSection";
 import { FocusablePanel } from "./FocusablePanel";
+import { HomeCarouselTitleFixSection } from "./HomeCarouselTitleFixSection";
 import { PluginUpdateSection } from "./PluginUpdateSection";
+import { RestoreMiniAchievementsSection } from "./RestoreMiniAchievementsSection";
 import { SettingsSection } from "./SettingsSection";
 import { VersionsSection } from "./VersionsSection";
 
@@ -11,11 +12,13 @@ type Props = {
   settings: PluginSettings;
   settingsLoaded: boolean;
   featureBusy: boolean;
+  homeCarouselFixBusy: boolean;
   debugBusy: boolean;
   updateChannelBusy: boolean;
   automaticChecksBusy: boolean;
   versions: Versions;
   onFeatureChange: (enabled: boolean) => void;
+  onHomeCarouselFixChange: (enabled: boolean) => void;
   onDebugChange: (enabled: boolean) => void;
   onUpdateChannelChange: (channel: UpdateChannel) => void;
   onAutomaticChecksChange: (enabled: boolean) => void;
@@ -25,14 +28,23 @@ type Props = {
 export function PluginPanelContent(props: Props) {
   return (
     <FocusablePanel>
-      <DescriptionSection focusRef={props.descriptionRef} />
-      <SettingsSection
+      <RestoreMiniAchievementsSection
+        focusRef={props.descriptionRef}
         featureEnabled={props.settings.feature_enabled}
-        debugLogging={props.settings.debug_logging}
         settingsLoaded={props.settingsLoaded}
         featureBusy={props.featureBusy}
-        debugBusy={props.debugBusy}
         onFeatureChange={props.onFeatureChange}
+      />
+      <HomeCarouselTitleFixSection
+        enabled={props.settings.home_carousel_fix_enabled}
+        settingsLoaded={props.settingsLoaded}
+        busy={props.homeCarouselFixBusy}
+        onChange={props.onHomeCarouselFixChange}
+      />
+      <SettingsSection
+        debugLogging={props.settings.debug_logging}
+        settingsLoaded={props.settingsLoaded}
+        debugBusy={props.debugBusy}
         onDebugChange={props.onDebugChange}
       />
       <PluginUpdateSection

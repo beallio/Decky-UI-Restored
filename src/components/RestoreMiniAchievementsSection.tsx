@@ -1,4 +1,4 @@
-import { Field, PanelSection, PanelSectionRow } from "@decky/ui";
+import { Field, PanelSection, PanelSectionRow, ToggleField } from "@decky/ui";
 import type { FocusEvent, Ref } from "react";
 import * as log from "../log";
 
@@ -61,9 +61,23 @@ const revealOnFocus = {
   },
 };
 
-export function DescriptionSection({ focusRef }: { focusRef?: Ref<HTMLDivElement> }) {
+type Props = {
+  focusRef?: Ref<HTMLDivElement>;
+  featureEnabled: boolean;
+  settingsLoaded: boolean;
+  featureBusy: boolean;
+  onFeatureChange: (enabled: boolean) => void;
+};
+
+export function RestoreMiniAchievementsSection({
+  focusRef,
+  featureEnabled,
+  settingsLoaded,
+  featureBusy,
+  onFeatureChange,
+}: Props) {
   return (
-    <PanelSection>
+    <PanelSection title="Restore Mini Achievements">
       <PanelSectionRow>
         <Field
           ref={focusRef}
@@ -82,6 +96,16 @@ export function DescriptionSection({ focusRef }: { focusRef?: Ref<HTMLDivElement
             to Play Time). Open a game that has achievements to see it.
           </div>
         </Field>
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <ToggleField
+          label="Enable mini achievements"
+          description="Shows achievement progress on game details pages."
+          checked={featureEnabled}
+          disabled={!settingsLoaded || featureBusy}
+          highlightOnFocus={true}
+          onChange={onFeatureChange}
+        />
       </PanelSectionRow>
     </PanelSection>
   );

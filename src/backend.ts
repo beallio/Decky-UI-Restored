@@ -2,6 +2,7 @@ import { callable } from "@decky/api";
 
 export type PluginSettings = {
   feature_enabled: boolean;
+  home_carousel_fix_enabled: boolean;
   debug_logging: boolean;
   update_channel: UpdateChannel;
   automatic_update_checks: boolean;
@@ -70,6 +71,9 @@ export type Versions = {
 export const getSettings = callable<[], PluginSettings>("get_settings");
 export const setFeatureEnabled = callable<[boolean], PluginSettings>(
   "set_feature_enabled",
+);
+export const setHomeCarouselFixEnabled = callable<[boolean], PluginSettings>(
+  "set_home_carousel_fix_enabled",
 );
 export const setDebugLogging = callable<[boolean], PluginSettings>(
   "set_debug_logging",

@@ -27,12 +27,13 @@ def installer_module():
 
 def test_distribution_contract_is_canonical_and_stable(installer_module):
     assert installer_module.DISTRIBUTION_PLUGIN_URL == (
-        "https://github.com/beallio/Decky-SteamAchievements"
+        "https://github.com/beallio/Deck-UI-Restored"
     )
     assert installer_module.DISTRIBUTION_ASSET == "Decky-SteamAchievements.zip"
     assert installer_module.DISTRIBUTION_FOLDER == "Decky-SteamAchievements"
-    assert installer_module.DISTRIBUTION_PLUGIN_NAME == "Achievements Restored"
+    assert installer_module.DISTRIBUTION_PLUGIN_NAME == "Deck UI Restored"
     assert installer_module.DISTRIBUTION_LEGACY_PLUGIN_NAMES == (
+        "Achievements Restored",
         "Decky-SteamAchievements",
     )
     assert installer_module.DISTRIBUTION_RELEASE_TAG == ""
@@ -70,7 +71,7 @@ def test_default_github_resolution_uses_latest_stable_endpoint(
     )
 
     assert seen == [
-        "https://api.github.com/repos/beallio/Decky-SteamAchievements/releases/latest"
+        "https://api.github.com/repos/beallio/Deck-UI-Restored/releases/latest"
     ]
     assert resolved.release_tag == "v1.2.3"
     assert resolved.expected_sha256 == "a" * 64
@@ -82,7 +83,7 @@ def test_existing_plugin_is_selected_by_current_or_legacy_manifest_identity(
     old_directory = tmp_path / "old-display-directory"
     old_directory.mkdir()
     (old_directory / "plugin.json").write_text(
-        json.dumps({"name": "Decky-SteamAchievements"}), encoding="utf-8"
+        json.dumps({"name": "Achievements Restored"}), encoding="utf-8"
     )
     unrelated = tmp_path / "Decky-SteamAchievements"
     unrelated.mkdir()
@@ -92,14 +93,14 @@ def test_existing_plugin_is_selected_by_current_or_legacy_manifest_identity(
 
     package = installer_module.PluginPackage(
         folder="Decky-SteamAchievements",
-        name="Achievements Restored",
+        name="Deck UI Restored",
         root_plugin=False,
         staged_path=tmp_path / "stage",
         remote_binaries=(),
     )
     aliases = installer_module.identity_aliases(package)
 
-    assert aliases == ("Decky-SteamAchievements",)
+    assert aliases == ("Achievements Restored", "Decky-SteamAchievements")
     assert installer_module.find_existing_plugin(
         tmp_path, package.name, aliases
     ) == old_directory
@@ -116,6 +117,7 @@ def test_plugin_order_migrates_legacy_name_without_duplicate(
                     "CheatDeck",
                     "Decky-SteamAchievements",
                     "Achievements Restored",
+                    "Deck UI Restored",
                     "Storage Cleaner",
                 ]
             }
@@ -136,14 +138,14 @@ def test_plugin_order_migrates_legacy_name_without_duplicate(
 
     installer_module.update_plugin_order(
         settings_file,
-        "Achievements Restored",
+        "Deck UI Restored",
         tmp_path,
-        ("Decky-SteamAchievements",),
+        ("Achievements Restored", "Decky-SteamAchievements"),
     )
 
     assert written["pluginOrder"] == [
         "CheatDeck",
-        "Achievements Restored",
+        "Deck UI Restored",
         "Storage Cleaner",
     ]
 

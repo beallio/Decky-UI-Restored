@@ -1,115 +1,87 @@
-# Achievements Restored — Decky QAM plugin restoring SteamOS's missing mini achievement bar
+# Deck UI Restored
 
-A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that
-**brings back the achievement progress bar Valve removed** from the Steam Deck
-game-details page; the compact stat next to Play Time, with the blue completion ribbon at 100%:
-```
-ACHIEVEMENTS
-n/tot  ███▒▒▒
-```
+[![License](https://img.shields.io/github/license/beallio/Deck-UI-Restored)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/beallio/Deck-UI-Restored?display_name=tag)](https://github.com/beallio/Deck-UI-Restored/releases/latest)
+[![CI](https://github.com/beallio/Deck-UI-Restored/actions/workflows/ci.yml/badge.svg)](https://github.com/beallio/Deck-UI-Restored/actions/workflows/ci.yml)
+
+Deck UI Restored is a Decky Loader plugin that fixes Steam Deck interface problems caused by Steam updates. Each fix has its own switch, so you can use only the ones you want.
+
+## What it fixes
+
+### Mini achievements
+
+Steam stopped showing the small achievement progress bar beside Play Time on game details pages. Deck UI Restored brings that bar back by using Steam's own achievement display and live progress data.
 
 ![Restored achievement bar](assets/achievement-bar-restored.png)
 
-## What actually happened
+The bar still follows Steam's normal rules. It stays hidden when Steam has no achievement total, and it does not invent progress for games with missing data.
 
-The bar was **not deleted**. Valve's own `MiniAchievements` component (in the
-app-details PlayBar / `GameStatsSection`) still ships, with working CSS and the
-live `GetAchievements(appid)` data. In Steam changelist **10546225 (~2026-03-24)**
-Valve added a single guard to its `render()`:
+### Home carousel title
 
-```js
-if (!this.props.onSeek) return null;
-```
+The first game in the Home carousel can sometimes stay highlighted after controller focus moves to another game. Its old title, glow, and raised tile can remain on screen.
 
-The Steam Deck game-details header renders its PlayBar with `onSeek: undefined`,
-so the guard now returns `null` and the bar disappears. Supplying a real `onSeek`
-makes Valve's own component render again — confirmed by injecting `onSeek` into
-the live instance on-device (see the screenshot above).
+The optional Home Carousel Title Fix clears that stuck state while you move through the carousel. It keeps the appearance chosen by Steam and your other CSSLoader themes.
 
-This plugin patches `MiniAchievements`' own `render` to supply the withheld
-`onSeek` prop, then schedules a re-render so React commits Valve's component.
-**It does not reimplement the bar.**
+| Before: the first game stays highlighted | After: only the focused game is highlighted |
+| --- | --- |
+| ![Home carousel before the fix, with the first game title and raised tile still visible](assets/home-carousel-before.png) | ![Home carousel after the fix, with the first game returned to its normal resting state](assets/home-carousel-after.png) |
 
-The plugin also preserves Valve's native installed-game behavior. Valve
-intentionally hides the compact bar for an uninstalled game with zero earned
-achievements, permits it for an uninstalled game with earned progress when that
-data is available, and hides it whenever Steam supplies no achievement total.
+## Using the plugin
 
-## What the plugin includes
+Open **Quick Access → Decky → Deck UI Restored**.
 
-- A persistent **Achievement bar** toggle that can remove or restore the bar on
-  the currently open game page without reloading Steam.
-- A persistent **Debug logging** toggle for verbose troubleshooting output.
-- A gamepad-focusable **Updates** panel for manual checks, automatic background
-  checks, stable or development release selection, and Decky's native install
-  confirmation flow.
-- A gamepad-focusable **Versions** panel showing the installed plugin, Decky
-  Loader, and SteamOS versions.
-- Valve's own achievement rendering and native installed/data guards; the plugin
-  does not fabricate achievement data or replace Valve's bar.
+The panel contains:
 
-## In-plugin updates
+- **Restore Mini Achievements** — turns the achievement progress bar on or off. It is on by default.
+- **Home Carousel Title Fix** — fixes the stuck Home carousel highlight. It is off by default.
+- **Settings** — includes optional debug logging for troubleshooting.
+- **Updates** — checks for new versions and lets Decky install them.
+- **Versions** — shows the installed plugin, Decky Loader, and SteamOS versions.
 
-The Updates section defaults to the stable channel and automatic checks. It can
-check immediately on demand, or check in the background while the plugin is
-loaded and show one toast per newly discovered release. Development releases
-are opt-in behind a warning and use immutable `vX.Y.Z-dev.g<sha>` prerelease
-tags; the mutable `dev-build` convenience release is intentionally ignored by
-update discovery.
+All controls can be used with the Steam Deck controls.
 
-Before offering an update, the backend validates the release manifest, plugin
-identity, channel, exact ZIP asset, and whole-archive SHA-256. It repeats that
-validation immediately before installation. The plugin never overwrites itself
-or stages the ZIP: accepting the action hands the validated URL, version, and
-hash to Decky Loader's supported confirmation prompt. If that private Decky API
-is unavailable, the panel links to the release notes for manual ZIP installation
-or the Desktop installer fallback described below.
+## Updates
+
+Automatic update checks are on by default. You can also open the **Updates** panel and choose **Check now**.
+
+The stable channel is recommended for normal use. Development releases are available for testing, but they may contain unfinished changes or regressions.
+
+When an update is available, Decky shows its normal installation confirmation before making changes.
 
 ## Install on Steam Deck
 
-Decky Loader must already be installed. In SteamOS Desktop Mode:
+Decky Loader must already be installed.
 
-1. Download [`Decky-SteamAchievements Installer.zip`](installer/Decky-SteamAchievements%20Installer.zip).
-2. Extract the ZIP directly onto the Desktop. Keep the extracted
-   `Decky-SteamAchievementsInstaller` folder beside `Install Decky-SteamAchievements`.
-3. Double-click **Install Decky-SteamAchievements**. If KDE marks the downloaded
-   launcher as untrusted, review it and choose **Trust and Launch**.
-4. Confirm the plugin details and approve the administrator-authentication
-   prompt. Return to Gaming Mode when installation finishes.
+### Desktop installer
 
-`Decky-SteamAchievements Installer.zip` is the user-facing desktop bundle. Its
-installer downloads the canonical `Decky-SteamAchievements.zip` asset from the
-latest stable, non-prerelease GitHub release, validates the archive, backs up an
-existing plugin copy, installs the replacement, and restarts Decky Loader. It
-intentionally ignores the rolling `dev-build` prerelease. Until the first stable
-release is published, the installer will report that no stable release is
-available. Run the launcher as the normal `deck` user; do not run the whole
-installer with `sudo`.
+In SteamOS Desktop Mode:
+
+1. Download `Decky-SteamAchievements Installer.zip`.
+2. Extract the ZIP directly onto the Desktop.
+3. Keep the extracted `Decky-SteamAchievementsInstaller` folder beside `Install Decky-SteamAchievements`.
+4. Double-click **Install Decky-SteamAchievements**.
+5. Review the details and approve the administrator prompt.
+6. Return to Gaming Mode when installation finishes.
+
+If KDE marks the launcher as untrusted, review it and choose **Trust and Launch**.
 
 ### Install the plugin ZIP through Decky
 
-Decky can also install the `Decky-SteamAchievements.zip` plugin package directly:
+You can also install `Decky-SteamAchievements.zip` with Decky's built-in ZIP installer:
 
-1. Download `Decky-SteamAchievements.zip` from the desired release and place it
-   in the Steam Deck's `Downloads` folder. Stable builds use a permanent `vX.Y.Z`
-   tag; current development builds are available from the rolling
-   [`dev-build` prerelease](https://github.com/beallio/Decky-SteamAchievements/releases/tag/dev-build).
-2. In Gaming Mode, open **QAM → Decky → Settings → General**.
-3. Under **Other**, enable **Developer mode**. This adds the **Developer** page
-   to Decky's settings sidebar.
+1. Place `Decky-SteamAchievements.zip` in the Steam Deck's Downloads folder.
+2. Open **Quick Access → Decky → Settings → General**.
+3. Under **Other**, enable **Developer mode**.
 4. Open **Developer → Third-Party Plugins**.
-5. Beside **Install Plugin from ZIP File**, choose **Browse**, select
-   `Decky-SteamAchievements.zip` from `Downloads`, and approve Decky's
-   installation confirmation.
+5. Choose **Install Plugin from ZIP File**, select the ZIP, and approve the installation.
 
-Use the plugin ZIP for Decky's built-in installation flow. Do not select
-`Decky-SteamAchievements Installer.zip` there; that bundle is intended to be
-extracted and launched from SteamOS Desktop Mode as described above.
+Use `Decky-SteamAchievements.zip` for this method. Do not select `Decky-SteamAchievements Installer.zip`; that file is the Desktop installer bundle.
+
+Decky shows the installed plugin as **Deck UI Restored**. The download and installed folder keep the older `Decky-SteamAchievements` name so existing installations can update safely.
 
 ## Development
 
-See [`DEVELOPER.md`](DEVELOPER.md) for setup, build, test, packaging, deployment,
-release tooling, installer-bundle maintenance, and repository layout information.
+Technical background, build instructions, packaging, testing, and release details are in [DEVELOPER.md](DEVELOPER.md).
 
 ## License
 

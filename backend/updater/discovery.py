@@ -13,6 +13,8 @@ from backend.updater.models import (
 
 from dataclasses import dataclass
 
+ACCEPTED_PLUGIN_NAMES = frozenset(("Achievements Restored", "Deck UI Restored"))
+
 
 @dataclass(frozen=True)
 class PrevalidatedRelease:
@@ -89,7 +91,7 @@ def validate_prevalidated_candidate(
     if manifest is None:
         return None
 
-    if manifest.plugin_name != "Achievements Restored":
+    if manifest.plugin_name not in ACCEPTED_PLUGIN_NAMES:
         return None
     if manifest.package_name != "decky-steamachievements":
         return None
