@@ -41,7 +41,7 @@ describe("deckyInstaller", () => {
     expect(callable).toHaveBeenCalledWith("utilities/install_plugin");
     expect(install).toHaveBeenCalledWith(
       "https://example/Decky-SteamAchievements.zip",
-      "Achievements Restored",
+      "Deck UI Restored",
       "1.2.3",
       "a".repeat(64),
       2,
@@ -62,7 +62,7 @@ describe("deckyInstaller", () => {
     expect(call).toHaveBeenCalledWith(
       "utilities/install_plugin",
       "https://example/Decky-SteamAchievements.zip",
-      "Achievements Restored",
+      "Deck UI Restored",
       "1.2.2",
       "b".repeat(64),
       3,

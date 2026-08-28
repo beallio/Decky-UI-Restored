@@ -1,6 +1,6 @@
 Decky-SteamAchievements Installer
 
-Decky lists the installed plugin as "Achievements Restored".
+Decky lists the installed plugin as "Deck UI Restored".
 
 1. Extract this archive directly onto the SteamOS Desktop.
 2. Double-click "Install Decky-SteamAchievements".

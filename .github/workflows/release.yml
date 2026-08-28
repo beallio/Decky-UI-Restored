@@ -109,7 +109,7 @@ jobs:
           python3 scripts/validate_plugin_zip.py \
             Decky-SteamAchievements.zip \
             --expected-root Decky-SteamAchievements \
-            --expected-name "Achievements Restored" \
+            --expected-name "Deck UI Restored" \
             --expected-version "$RELEASE_VERSION"
           python3 scripts/check_backend_archive_parity.py \
             Decky-SteamAchievements.zip \
