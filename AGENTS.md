@@ -63,6 +63,15 @@ diff, live runtime constraints, failed approaches, and the shipped mechanism).
   gradient.
 - Match components by stable signatures, not minified locals or hashed
   classnames — those churn every Steam update.
+- The optional Home-carousel fix resolves CSS modules by export-key signatures,
+  never by module ID or CSS hash. Its three target roles are
+  `CarouselGameLabelWrapper`, `CarouselCapsuleBackgroundGlow`, and AppPortrait
+  `LibraryItemBox`; it also requires the BasicGameCarousel media-card and each
+  module's `ShowAsHovered` export.
+- Service only a carousel containing a media card whose own element has
+  `.gpfocuswithin`. Observe and mutate only that carousel; remove no styles or
+  unrelated classes. React-aware teardown restores only tokens still expected
+  by the element's live React `className`.
 
 ## Orchestration
 
@@ -80,8 +89,9 @@ diff, live runtime constraints, failed approaches, and the shipped mechanism).
 - Prefer resilient lookups and graceful failure — a broken patch must never crash
   the Steam UI (wrap in try/catch, log, no-op on failure).
 - Persistent settings live in Decky's plugin settings directory and default to
-  achievement restoration enabled, verbose diagnostics disabled, the stable
-  update channel, and automatic update checks enabled.
+  achievement restoration enabled, the Home carousel title fix disabled,
+  verbose diagnostics disabled, the stable update channel, and automatic update
+  checks enabled.
 - Disabling restoration must clean injected props from mounted instances, not
   only remove route/prototype patches.
 - Report the installed plugin version from the packaged manifest; resolve Decky

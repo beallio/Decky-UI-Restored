@@ -37,9 +37,17 @@ data is available, and hides it whenever Steam supplies no achievement total.
 
 ## What the plugin includes
 
-- A persistent **Achievement bar** toggle that can remove or restore the bar on
-  the currently open game page without reloading Steam.
+- A persistent **Enable mini achievements** toggle in the **Restore Mini
+  Achievements** panel that can remove or restore the bar on the currently open
+  game page without reloading Steam.
+- An optional **Home Carousel Title Fix** toggle, disabled by default. While
+  controller focus is inside an affected Home carousel, it removes only the
+  stale source-state classes from nonfocused cards. This hides the stale title,
+  glow, and raised tile without style overrides and preserves third-party theme
+  values.
 - A persistent **Debug logging** toggle for verbose troubleshooting output.
+- Clear gamepad-focusable QAM panels: **Restore Mini Achievements**, **Home
+  Carousel Title Fix**, **Settings**, **Updates**, and **Versions**.
 - A gamepad-focusable **Updates** panel for manual checks, automatic background
   checks, stable or development release selection, and Decky's native install
   confirmation flow.
@@ -47,6 +55,11 @@ data is available, and hides it whenever Steam supplies no achievement total.
   Loader, and SteamOS versions.
 - Valve's own achievement rendering and native installed/data guards; the plugin
   does not fabricate achievement data or replace Valve's bar.
+
+The separate CSSLoader Home Carousel Title Fix theme is not required for the
+verified in-carousel case while this option is enabled. The plugin does not
+claim coverage when no carousel media card has controller focus, and it does not
+modify, disable, reproduce, or replace that theme.
 
 ## In-plugin updates
 
