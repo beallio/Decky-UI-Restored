@@ -9,6 +9,10 @@ const LIFECYCLE_INTERVAL_MS = 1_000;
 const DEFAULT_BREAKER_WINDOW_MS = 1_000;
 const DEFAULT_BREAKER_PASS_LIMIT = 20;
 const MAX_FACTORY_SURVIVORS = 10;
+// The lifecycle tick is one second. Cap exponential retries so an unmatched
+// Steam build stays quiet without making a later compatible build slow to recover.
+const RESOLUTION_BACKOFF_BASE_MS = 1_000;
+const RESOLUTION_BACKOFF_MAX_MS = 30_000;
 
 const BASIC_GAME_CAROUSEL_KEYS = [
   "BasicGameCarousel",
@@ -35,9 +39,34 @@ type WebpackRequire = ((id: string) => unknown) & {
   m?: Record<string, unknown>;
 };
 
-type CapturePair = {
+type CaptureState = {
   chunkArray: any[];
-  require: WebpackRequire;
+  pending: boolean;
+  require?: WebpackRequire;
+};
+
+type CaptureResult =
+  | { kind: "resolved"; chunkArray: any[]; require: WebpackRequire }
+  | { kind: "pending"; chunkArray: any[] }
+  | { kind: "failed"; chunkArray: any[] | undefined; error?: unknown };
+
+type ModuleResolutionFailure =
+  | "capture"
+  | "candidate-overflow"
+  | "unresolved"
+  | "ambiguous"
+  | "resolution-error";
+
+type ModuleResolutionResult =
+  | { modules: ResolvedHomeCarouselModules }
+  | { failure: Exclude<ModuleResolutionFailure, "capture">; error?: unknown };
+
+type RuntimeResolutionState = {
+  initialized: boolean;
+  chunkArray: any[] | undefined;
+  nextEligibleAt: number;
+  retryDelayMs: number;
+  lastReportedFailure: ModuleResolutionFailure | undefined;
 };
 
 type TimerHandle = unknown;
@@ -70,7 +99,7 @@ type Binding = {
   everEligible: boolean;
 };
 
-let moduleCapture: CapturePair | undefined;
+let moduleCapture: CaptureState | undefined;
 let resolvedModuleCache:
   | { require: WebpackRequire; modules: ResolvedHomeCarouselModules }
   | undefined;
@@ -113,15 +142,19 @@ function isClassModule<T extends readonly string[]>(
 }
 
 /** Resolve only CSS modules whose factories carry every stable export key. */
-export function resolveHomeCarouselModules(
+function resolveHomeCarouselModulesResult(
   candidateRequire: unknown,
-): ResolvedHomeCarouselModules | undefined {
-  if (typeof candidateRequire !== "function") return undefined;
+): ModuleResolutionResult {
+  if (typeof candidateRequire !== "function") {
+    return { failure: "unresolved" };
+  }
   const webpackRequire = candidateRequire as WebpackRequire;
 
   try {
     const factories = webpackRequire.m;
-    if (factories === null || typeof factories !== "object") return undefined;
+    if (factories === null || typeof factories !== "object") {
+      return { failure: "unresolved" };
+    }
 
     const survivors: Array<{
       id: string;
@@ -147,8 +180,7 @@ export function resolveHomeCarouselModules(
 
       survivors.push({ id, basic, portrait });
       if (survivors.length > MAX_FACTORY_SURVIVORS) {
-        safeWarn("CSS-module candidate overflow; runtime remains inactive");
-        return undefined;
+        return { failure: "candidate-overflow" };
       }
     }
 
@@ -175,22 +207,28 @@ export function resolveHomeCarouselModules(
     }
 
     if (basicMatches.length !== 1 || portraitMatches.length !== 1) {
-      safeWarn(
-        "CSS modules are unresolved or ambiguous; runtime remains inactive",
-        `BasicGameCarousel=${basicMatches.length}`,
-        `AppPortrait=${portraitMatches.length}`,
-      );
-      return undefined;
+      if (basicMatches.length > 1 || portraitMatches.length > 1) {
+        return { failure: "ambiguous" };
+      }
+      return { failure: "unresolved" };
     }
 
     return {
-      basicGameCarousel: basicMatches[0],
-      appPortrait: portraitMatches[0],
+      modules: {
+        basicGameCarousel: basicMatches[0],
+        appPortrait: portraitMatches[0],
+      },
     };
   } catch (error) {
-    safeWarn("CSS-module resolution failed", error);
-    return undefined;
+    return { failure: "resolution-error", error };
   }
+}
+
+export function resolveHomeCarouselModules(
+  candidateRequire: unknown,
+): ResolvedHomeCarouselModules | undefined {
+  const result = resolveHomeCarouselModulesResult(candidateRequire);
+  return "modules" in result ? result.modules : undefined;
 }
 
 function persistedCapture(sharedWindow: any): unknown {
@@ -201,91 +239,213 @@ function persistedCapture(sharedWindow: any): unknown {
   }
 }
 
-function persistCapture(sharedWindow: any, pair: unknown): void {
+function persistCapture(sharedWindow: any, state: CaptureState): void {
   try {
     Object.defineProperty(sharedWindow, CAPTURE_SYMBOL, {
       configurable: true,
-      value: pair,
+      value: state,
     });
-  } catch (error) {
-    safeWarn("webpack require capture persistence failed", error);
+  } catch {
+    // Capture can still work for this plugin instance without reload persistence.
+  }
+}
+
+function clearPersistedCapture(sharedWindow: any, state: CaptureState): void {
+  try {
+    if (persistedCapture(sharedWindow) === state) {
+      delete sharedWindow[CAPTURE_SYMBOL];
+    }
+  } catch {
+    // A stale persisted state is safe to leave behind when the shared window rejects deletion.
   }
 }
 
 function captureWebpackRequire(
-  getSharedWindow: () => any,
-): WebpackRequire | undefined {
-  try {
-    const sharedWindow = getSharedWindow();
-    const chunkArray = sharedWindow?.webpackChunksteamui;
-    if (!Array.isArray(chunkArray)) {
-      safeDebug("webpack require capture unavailable: chunk array missing");
-      return undefined;
-    }
+  sharedWindow: any,
+  chunkArray: any[] | undefined,
+): CaptureResult {
+  if (!Array.isArray(chunkArray)) {
+    return { kind: "failed", chunkArray: undefined };
+  }
 
-    if (moduleCapture?.chunkArray === chunkArray) {
+  if (moduleCapture?.chunkArray === chunkArray) {
+    if (typeof moduleCapture.require === "function") {
       if (persistedCapture(sharedWindow) !== moduleCapture) {
         persistCapture(sharedWindow, moduleCapture);
       }
-      return moduleCapture.require;
+      return {
+        kind: "resolved",
+        chunkArray,
+        require: moduleCapture.require,
+      };
     }
+    if (moduleCapture.pending) return { kind: "pending", chunkArray };
+    moduleCapture = undefined;
+  }
 
-    const persisted = persistedCapture(sharedWindow) as
-      | Partial<CapturePair>
-      | undefined;
-    if (persisted?.chunkArray === chunkArray) {
-      if (typeof persisted.require === "function") {
-        moduleCapture = persisted as CapturePair;
-        return moduleCapture.require;
+  const persisted = persistedCapture(sharedWindow) as
+    | Partial<CaptureState>
+    | undefined;
+  if (persisted?.chunkArray === chunkArray) {
+    if (typeof persisted.require === "function") {
+      const state: CaptureState = {
+        chunkArray,
+        pending: false,
+        require: persisted.require as WebpackRequire,
+      };
+      moduleCapture = state;
+      if (persistedCapture(sharedWindow) !== state) {
+        persistCapture(sharedWindow, state);
       }
-
-      safeDebug("webpack require capture already failed for this chunk array");
-      return undefined;
+      return { kind: "resolved", chunkArray, require: state.require };
     }
-
-    let captured: WebpackRequire | undefined;
-    try {
-      chunkArray.push([
-        [CAPTURE_CHUNK_ID],
-        {},
-        (webpackRequire: WebpackRequire) => {
-          if (typeof webpackRequire === "function") captured = webpackRequire;
-        },
-      ]);
-    } catch (error) {
-      persistCapture(sharedWindow, { chunkArray, require: undefined });
-      safeWarn("webpack require capture failed", error);
-      return undefined;
+    if (persisted.pending === true) {
+      moduleCapture = persisted as CaptureState;
+      return { kind: "pending", chunkArray };
     }
+    clearPersistedCapture(sharedWindow, persisted as CaptureState);
+  }
 
-    if (!captured) {
-      persistCapture(sharedWindow, { chunkArray, require: undefined });
-      safeWarn("webpack require capture failed: callback was not invoked");
-      return undefined;
-    }
+  const state: CaptureState = { chunkArray, pending: true };
+  moduleCapture = state;
+  persistCapture(sharedWindow, state);
+  try {
+    chunkArray.push([
+      [CAPTURE_CHUNK_ID],
+      {},
+      (webpackRequire: WebpackRequire) => {
+        if (typeof webpackRequire !== "function") {
+          state.pending = false;
+          if (moduleCapture === state) moduleCapture = undefined;
+          clearPersistedCapture(sharedWindow, state);
+          return;
+        }
 
-    const pair: CapturePair = { chunkArray, require: captured };
-    moduleCapture = pair;
-    persistCapture(sharedWindow, pair);
-    return captured;
+        state.require = webpackRequire;
+        state.pending = false;
+        try {
+          if (sharedWindow?.webpackChunksteamui !== chunkArray) return;
+        } catch {
+          return;
+        }
+        moduleCapture = state;
+        persistCapture(sharedWindow, state);
+      },
+    ]);
   } catch (error) {
-    safeWarn("webpack require capture failed", error);
-    return undefined;
+    if (moduleCapture === state) moduleCapture = undefined;
+    clearPersistedCapture(sharedWindow, state);
+    return { kind: "failed", chunkArray, error };
+  }
+
+  if (typeof state.require === "function") {
+    return { kind: "resolved", chunkArray, require: state.require };
+  }
+  if (!state.pending) return { kind: "failed", chunkArray };
+  return { kind: "pending", chunkArray };
+}
+
+function resetResolutionState(
+  state: RuntimeResolutionState,
+  chunkArray: any[] | undefined,
+): void {
+  state.initialized = true;
+  state.chunkArray = chunkArray;
+  state.nextEligibleAt = 0;
+  state.retryDelayMs = 0;
+  state.lastReportedFailure = undefined;
+}
+
+function resolutionFailureMessage(failure: ModuleResolutionFailure): string {
+  switch (failure) {
+    case "capture":
+      return "webpack require capture failed; runtime will retry with bounded backoff";
+    case "candidate-overflow":
+      return "CSS-module candidate overflow; runtime remains inactive";
+    case "unresolved":
+      return "CSS modules are unresolved; runtime remains inactive";
+    case "ambiguous":
+      return "CSS modules are ambiguous; runtime remains inactive";
+    case "resolution-error":
+      return "CSS-module resolution failed; runtime remains inactive";
   }
 }
 
 function resolveRuntimeModules(
-  getSharedWindow: () => any,
+  dependencies: Pick<HomeCarouselTitleFixDependencies, "getSharedWindow" | "now">,
+  state: RuntimeResolutionState,
 ): ResolvedHomeCarouselModules | undefined {
-  const webpackRequire = captureWebpackRequire(getSharedWindow);
-  if (!webpackRequire) return undefined;
-  if (resolvedModuleCache?.require === webpackRequire) {
+  let sharedWindow: any;
+  try {
+    sharedWindow = dependencies.getSharedWindow();
+  } catch (error) {
+    sharedWindow = undefined;
+    safeDebug("webpack require capture unavailable", error);
+  }
+
+  let chunkArray: any[] | undefined;
+  try {
+    const candidate = sharedWindow?.webpackChunksteamui;
+    chunkArray = Array.isArray(candidate) ? candidate : undefined;
+  } catch {
+    chunkArray = undefined;
+  }
+  if (!state.initialized || state.chunkArray !== chunkArray) {
+    resetResolutionState(state, chunkArray);
+  }
+
+  let now: number;
+  try {
+    now = dependencies.now();
+  } catch (error) {
+    safeWarn("module-resolution retry clock failed", error);
+    return undefined;
+  }
+  if (!Number.isFinite(now)) {
+    safeWarn("module-resolution retry clock is invalid");
+    return undefined;
+  }
+  if (now < state.nextEligibleAt) return undefined;
+
+  const recordFailure = (
+    failure: ModuleResolutionFailure,
+    error?: unknown,
+  ): undefined => {
+    if (state.lastReportedFailure !== failure) {
+      safeWarn(resolutionFailureMessage(failure), error);
+      state.lastReportedFailure = failure;
+    }
+    state.retryDelayMs = Math.min(
+      state.retryDelayMs > 0
+        ? state.retryDelayMs * 2
+        : RESOLUTION_BACKOFF_BASE_MS,
+      RESOLUTION_BACKOFF_MAX_MS,
+    );
+    state.nextEligibleAt = now + state.retryDelayMs;
+    return undefined;
+  };
+
+  const capture = captureWebpackRequire(sharedWindow, chunkArray);
+  if (capture.kind === "pending") return undefined;
+  if (capture.kind === "failed") {
+    return recordFailure("capture", capture.error);
+  }
+
+  if (resolvedModuleCache?.require === capture.require) {
+    state.nextEligibleAt = 0;
+    state.retryDelayMs = 0;
+    state.lastReportedFailure = undefined;
     return resolvedModuleCache.modules;
   }
 
-  const modules = resolveHomeCarouselModules(webpackRequire);
-  if (modules) resolvedModuleCache = { require: webpackRequire, modules };
-  return modules;
+  const result = resolveHomeCarouselModulesResult(capture.require);
+  if ("failure" in result) return recordFailure(result.failure, result.error);
+
+  resolvedModuleCache = { require: capture.require, modules: result.modules };
+  state.nextEligibleAt = 0;
+  state.retryDelayMs = 0;
+  state.lastReportedFailure = undefined;
+  return result.modules;
 }
 
 function cssEscape(value: string): string {
@@ -424,6 +584,13 @@ export function installHomeCarouselTitleFix(
   let lifecycleHandle: TimerHandle | undefined;
   let disposed = false;
   let missingDocumentLogged = false;
+  const moduleResolutionState: RuntimeResolutionState = {
+    initialized: false,
+    chunkArray: undefined,
+    nextEligibleAt: 0,
+    retryDelayMs: 0,
+    lastReportedFailure: undefined,
+  };
 
   const cancelScheduled = (binding: Binding): void => {
     if (!binding.scheduled) return;
@@ -708,7 +875,7 @@ export function installHomeCarouselTitleFix(
     if (disposed) return;
 
     try {
-      const modules = resolveRuntimeModules(dependencies.getSharedWindow);
+      const modules = resolveRuntimeModules(dependencies, moduleResolutionState);
       if (!modules) {
         if (bindings.size > 0) clearBindings();
         currentDocument = undefined;

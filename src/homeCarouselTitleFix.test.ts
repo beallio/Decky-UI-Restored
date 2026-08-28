@@ -85,12 +85,42 @@ function validRequire(extra: Record<string, WebpackEntry> = {}): any {
   });
 }
 
-function steamChunkArray(require: any): any[] {
+function observeFactoryScans(require: any): {
+  scans: () => number;
+  factories: Record<string, unknown>;
+} {
+  const factories = require.m;
+  let scanCount = 0;
+  Object.defineProperty(require, "m", {
+    configurable: true,
+    get: () => {
+      scanCount += 1;
+      return factories;
+    },
+  });
+  return { scans: () => scanCount, factories };
+}
+
+function steamChunkArray(
+  require: any,
+  options: {
+    captureMode?: "immediate" | "delayed";
+    pendingCaptures?: Array<() => void>;
+    pushError?: () => Error | undefined;
+  } = {},
+): any[] {
   const chunks: any[] = [];
   const append = chunks.push.bind(chunks);
   vi.spyOn(chunks, "push").mockImplementation((entry: any) => {
+    const error = options.pushError?.();
+    if (error) throw error;
     const result = append(entry);
-    entry?.[2]?.(require);
+    const capture = () => entry?.[2]?.(require);
+    if (options.captureMode === "delayed") {
+      options.pendingCaptures?.push(capture);
+    } else {
+      capture();
+    }
     return result;
   });
   return chunks;
@@ -171,6 +201,8 @@ function runtimeHarness(options: {
   hovered?: Set<Element>;
   breakerPassLimit?: number;
   breakerWindowMs?: number;
+  captureMode?: "immediate" | "delayed";
+  pushError?: Error;
 } = {}) {
   let currentDocument: Document | undefined =
     options.currentDocument ?? makeDocument();
@@ -181,8 +213,14 @@ function runtimeHarness(options: {
   const hovered = options.hovered ?? new Set<Element>();
   const require = options.require ?? validRequire();
   const popupManager = { kind: "test-popup-manager" };
+  const pendingCaptures: Array<() => void> = [];
+  let pushError = options.pushError;
   const sharedWindow = {
-    webpackChunksteamui: steamChunkArray(require),
+    webpackChunksteamui: steamChunkArray(require, {
+      captureMode: options.captureMode,
+      pendingCaptures,
+      pushError: () => pushError,
+    }),
   };
 
   const dependencies = {
@@ -236,9 +274,21 @@ function runtimeHarness(options: {
     require,
     sharedWindow,
     setChunkArray(nextRequire: any) {
-      const next = steamChunkArray(nextRequire);
+      const next = steamChunkArray(nextRequire, {
+        captureMode: options.captureMode,
+        pendingCaptures,
+        pushError: () => pushError,
+      });
       sharedWindow.webpackChunksteamui = next;
       return next;
+    },
+    setPushError(nextError: Error | undefined) {
+      pushError = nextError;
+    },
+    flushWebpackCaptures(): number {
+      const captures = pendingCaptures.splice(0);
+      for (const capture of captures) capture();
+      return captures.length;
     },
     setDocument(nextDocument: Document | undefined) {
       currentDocument = nextDocument;
@@ -410,9 +460,10 @@ describe("installHomeCarouselTitleFix", () => {
     );
     expect(captureSymbol).toBeDefined();
     expect(Symbol.keyFor(captureSymbol!)).toBeDefined();
-    expect((harness.sharedWindow as any)[captureSymbol!]).toEqual({
+    expect((harness.sharedWindow as any)[captureSymbol!]).toMatchObject({
       chunkArray: harness.sharedWindow.webpackChunksteamui,
       require: harness.require,
+      pending: false,
     });
 
     vi.resetModules();
@@ -433,6 +484,154 @@ describe("installHomeCarouselTitleFix", () => {
 
     expect(firstChunks.push).toHaveBeenCalledTimes(1);
     expect(secondChunks.push).toHaveBeenCalledTimes(1);
+  });
+
+  it("publishes a delayed capture once and reuses its resolved persisted handle", async () => {
+    const harness = runtimeHarness({ captureMode: "delayed" });
+    const push = harness.sharedWindow.webpackChunksteamui.push;
+    const dispose = installHomeCarouselTitleFix(harness.dependencies);
+
+    expect(push).toHaveBeenCalledTimes(1);
+    harness.runLifecycle();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(harness.flushWebpackCaptures()).toBe(1);
+
+    const captureSymbol = Object.getOwnPropertySymbols(harness.sharedWindow).find(
+      (symbol) => /decky|achievement|carousel/i.test(Symbol.keyFor(symbol) ?? ""),
+    );
+    expect((harness.sharedWindow as any)[captureSymbol!]).toMatchObject({
+      chunkArray: harness.sharedWindow.webpackChunksteamui,
+      require: harness.require,
+      pending: false,
+    });
+
+    dispose();
+    installHomeCarouselTitleFix(harness.dependencies)();
+    expect(push).toHaveBeenCalledTimes(1);
+
+    vi.resetModules();
+    const reloaded = await import("./homeCarouselTitleFix");
+    reloaded.installHomeCarouselTitleFix(harness.dependencies)();
+    expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("backs off after a thrown capture push and retries after the window", () => {
+    const harness = runtimeHarness({
+      pushError: new Error("chunk array is not ready"),
+    });
+    const push = harness.sharedWindow.webpackChunksteamui.push;
+
+    installHomeCarouselTitleFix(harness.dependencies);
+    expect(push).toHaveBeenCalledTimes(1);
+
+    harness.runLifecycle();
+    harness.setNow(999);
+    harness.runLifecycle();
+    expect(push).toHaveBeenCalledTimes(1);
+
+    harness.setPushError(undefined);
+    harness.setNow(1_000);
+    harness.runLifecycle();
+    expect(push).toHaveBeenCalledTimes(2);
+  });
+
+  it("backs off module scans, resolves when modules appear, and stops after success", () => {
+    const require = webpackRequire({
+      basic: { sourceKeys: BASIC_KEYS, value: BASIC },
+    });
+    const observed = observeFactoryScans(require);
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => undefined);
+    const harness = runtimeHarness({ require });
+
+    installHomeCarouselTitleFix(harness.dependencies);
+    expect(observed.scans()).toBe(1);
+    expect(require).toHaveBeenCalledTimes(1);
+    expect(
+      warn.mock.calls.filter((args) =>
+        args.some((arg) => /unresolved/i.test(String(arg))),
+      ),
+    ).toHaveLength(1);
+
+    harness.runLifecycle();
+    harness.setNow(999);
+    harness.runLifecycle();
+    expect(observed.scans()).toBe(1);
+    expect(require).toHaveBeenCalledTimes(1);
+    expect(
+      warn.mock.calls.filter((args) =>
+        args.some((arg) => /unresolved/i.test(String(arg))),
+      ),
+    ).toHaveLength(1);
+
+    harness.setNow(1_000);
+    harness.runLifecycle();
+    expect(observed.scans()).toBe(2);
+    expect(require).toHaveBeenCalledTimes(2);
+    expect(
+      warn.mock.calls.filter((args) =>
+        args.some((arg) => /unresolved/i.test(String(arg))),
+      ),
+    ).toHaveLength(1);
+
+    observed.factories.portrait = factoryWithSource(PORTRAIT_KEYS);
+    require.mockImplementation((id: string) =>
+      id === "basic" ? BASIC : id === "portrait" ? PORTRAIT : undefined,
+    );
+    harness.setNow(3_000);
+    harness.runLifecycle();
+    expect(observed.scans()).toBe(3);
+    expect(require).toHaveBeenCalledTimes(4);
+
+    harness.setNow(10_000);
+    harness.runLifecycle();
+    expect(observed.scans()).toBe(3);
+  });
+
+  it.each([
+    [
+      "unresolved",
+      () => webpackRequire({ basic: { sourceKeys: BASIC_KEYS, value: BASIC } }),
+    ],
+    [
+      "ambiguous",
+      () =>
+        webpackRequire({
+          basicOne: { sourceKeys: BASIC_KEYS, value: BASIC },
+          basicTwo: {
+            sourceKeys: BASIC_KEYS,
+            value: { ...BASIC, BasicGameCarousel: "another-carousel" },
+          },
+          portrait: { sourceKeys: PORTRAIT_KEYS, value: PORTRAIT },
+        }),
+    ],
+    [
+      "candidate overflow",
+      () => {
+        const entries: Record<string, WebpackEntry> = {};
+        for (let index = 0; index < 11; index += 1) {
+          entries[`basic-${index}`] = {
+            sourceKeys: BASIC_KEYS,
+            value: BASIC,
+          };
+        }
+        return webpackRequire(entries);
+      },
+    ],
+  ])("logs one distinct %s module-resolution diagnostic per unchanged failure", (label, makeRequire) => {
+    const warn = vi.spyOn(log, "warn").mockImplementation(() => undefined);
+    const harness = runtimeHarness({ require: makeRequire() });
+
+    installHomeCarouselTitleFix(harness.dependencies);
+    harness.setNow(1_000);
+    harness.runLifecycle();
+
+    expect(
+      warn.mock.calls.filter((args) =>
+        args.some((arg) =>
+          String(arg).toLowerCase().includes(label.replace("candidate ", "")),
+        ),
+      ),
+    ).toHaveLength(1);
   });
 
   it.each([
