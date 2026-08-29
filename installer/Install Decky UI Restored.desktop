@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Install Decky UI Restored
+Comment=Install or update Decky UI Restored
+Exec=/usr/bin/python3 /home/deck/Desktop/DeckyUIRestoredInstaller/install_decky_plugin.py --gui
+TryExec=/usr/bin/python3
+Icon=system-software-install
+Terminal=false
+StartupNotify=true
+Categories=Utility;System;

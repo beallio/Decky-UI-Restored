@@ -10,6 +10,17 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-28
+
+Refreshes the Desktop installer branding and plugin icon while preserving update compatibility.
+
+### Changed
+
+- Brand the Desktop installer bundle, launcher, helper directory, dialogs, and log as Decky UI
+  Restored while retaining the compatibility-named `Decky-SteamAchievements.zip` plugin asset.
+- Replace the trophy plugin icon with a magic-wand icon that represents the broader
+  collection of reversible Steam UI fixes.
+
 ## [0.2.1] - 2026-08-28
 
 Expands the plugin into Decky UI Restored, a collection of reversible Steam Deck interface fixes.

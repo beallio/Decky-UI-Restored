@@ -73,13 +73,15 @@ def check(root: Path) -> list[str]:
             'owner="beallio", repo="Decky-UI-Restored"',
         ),
         (
-            root / "installer" / "Decky-SteamAchievementsInstaller"
+            root / "installer" / "DeckyUIRestoredInstaller"
             / "install_decky_plugin.py",
             f'DISTRIBUTION_PLUGIN_URL = "https://github.com/{GITHUB_REPOSITORY}"',
         ),
     )
     for path, expected_repository in repository_expectations:
-        if expected_repository not in path.read_text(encoding="utf-8"):
+        if not path.is_file():
+            errors.append(f"missing canonical installer artifact: {path.relative_to(root)}")
+        elif expected_repository not in path.read_text(encoding="utf-8"):
             errors.append(
                 f"{path.relative_to(root)} must use GitHub repository "
                 f"{GITHUB_REPOSITORY}"
@@ -98,16 +100,29 @@ def check(root: Path) -> list[str]:
 
 
     expected = [
-        root / "installer" / "Decky-SteamAchievements Installer.zip",
-        root / "installer" / "Install Decky-SteamAchievements.desktop",
-        root / "installer" / "Decky-SteamAchievementsInstaller" / "install_decky_plugin.py",
+        root / "installer" / "Decky UI Restored Installer.zip",
+        root / "installer" / "Install Decky UI Restored.desktop",
+        root / "installer" / "DeckyUIRestoredInstaller" / "install_decky_plugin.py",
     ]
     for path in expected:
         if not path.is_file():
             errors.append(f"missing canonical installer artifact: {path.relative_to(root)}")
-    for path in (root / "installer").iterdir():
-        if DISPLAY_NAME in path.name or "DeckyPluginInstaller" in path.name:
-            errors.append(f"obsolete installer path remains: {path.relative_to(root)}")
+    installer_source = expected[-1]
+    if installer_source.is_file() and (
+        'DISTRIBUTION_ASSET = "Decky-SteamAchievements.zip"'
+        not in installer_source.read_text(encoding="utf-8")
+    ):
+        errors.append("Desktop installer must retain Decky-SteamAchievements.zip")
+
+    removed = [
+        root / "installer" / "Decky-SteamAchievements Installer.zip",
+        root / "installer" / "Install Decky-SteamAchievements.desktop",
+        root / "installer" / "Decky-SteamAchievementsInstaller",
+        root / "installer" / "DeckyPluginInstaller",
+    ]
+    for path in removed:
+        if path.exists():
+            errors.append(f"removed legacy installer path remains: {path.relative_to(root)}")
     return errors
 
 
