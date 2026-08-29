@@ -9,24 +9,31 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "installer"
-BUNDLE = INSTALLER / "Decky-SteamAchievements Installer.zip"
+BUNDLE = INSTALLER / "Decky UI Restored Installer.zip"
 FILES = {
-    "Install Decky-SteamAchievements.desktop": INSTALLER
-    / "Install Decky-SteamAchievements.desktop",
-    "Decky-SteamAchievementsInstaller/README.txt": INSTALLER
-    / "Decky-SteamAchievementsInstaller"
+    "Install Decky UI Restored.desktop": INSTALLER / "Install Decky UI Restored.desktop",
+    "DeckyUIRestoredInstaller/README.txt": INSTALLER
+    / "DeckyUIRestoredInstaller"
     / "README.txt",
-    "Decky-SteamAchievementsInstaller/install_decky_plugin.py": INSTALLER
-    / "Decky-SteamAchievementsInstaller"
+    "DeckyUIRestoredInstaller/install_decky_plugin.py": INSTALLER
+    / "DeckyUIRestoredInstaller"
     / "install_decky_plugin.py",
 }
-DIRECTORY = "Decky-SteamAchievementsInstaller/"
+DIRECTORY = "DeckyUIRestoredInstaller/"
+EXPECTED_ENTRIES = (
+    "Install Decky UI Restored.desktop",
+    DIRECTORY,
+    "DeckyUIRestoredInstaller/README.txt",
+    "DeckyUIRestoredInstaller/install_decky_plugin.py",
+)
 
 
 def main() -> int:
+    if not BUNDLE.is_file():
+        raise SystemExit(f"missing installer bundle: {BUNDLE.relative_to(ROOT)}")
     with zipfile.ZipFile(BUNDLE) as archive:
         names = archive.namelist()
-        expected = [next(iter(FILES)), DIRECTORY, *list(FILES)[1:]]
+        expected = list(EXPECTED_ENTRIES)
         if names != expected:
             raise SystemExit(f"installer bundle entries differ: {names!r} != {expected!r}")
         for name, source in FILES.items():
@@ -42,7 +49,7 @@ def main() -> int:
                     raise SystemExit(f"installer bundle entry is not executable: {name}")
 
         installer = archive.read(
-            "Decky-SteamAchievementsInstaller/install_decky_plugin.py"
+            "DeckyUIRestoredInstaller/install_decky_plugin.py"
         ).decode("utf-8")
         if 'DISTRIBUTION_PLUGIN_URL = "https://github.com/beallio/Decky-UI-Restored"' not in installer:
             raise SystemExit("installer repository URL differs from the canonical repository")
@@ -50,7 +57,10 @@ def main() -> int:
             raise SystemExit("installer asset differs from the canonical plugin ZIP")
         if "DISTRIBUTION_INCLUDE_PRERELEASE = False" not in installer:
             raise SystemExit("installer must ignore prereleases by default")
-    print("installer-bundle: OK")
+    print(
+        f"installer-bundle: OK path={BUNDLE.relative_to(ROOT)} "
+        f"entries={list(EXPECTED_ENTRIES)!r}"
+    )
     return 0
 
 

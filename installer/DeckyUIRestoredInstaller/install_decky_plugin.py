@@ -65,6 +65,8 @@ DISTRIBUTION_ASSUME_YES = False
 # ---------------------------------------------------------------------------
 # Installer constants
 # ---------------------------------------------------------------------------
+INSTALLER_DISPLAY_NAME = "Decky UI Restored Installer"
+GUI_LOG_BASENAME = f"{INSTALLER_DISPLAY_NAME}.log"
 SERVICE_NAME = "plugin_loader.service"
 MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 10_000
@@ -186,7 +188,7 @@ def fail(message: str) -> NoReturn:
 
 
 def run_kdialog(
-    option: str, message: str, *, title: str = "Decky-SteamAchievements Installer"
+    option: str, message: str, *, title: str = INSTALLER_DISPLAY_NAME
 ) -> int:
     command = ["kdialog", option, message, "--title", title]
     try:
@@ -222,7 +224,7 @@ def gui_status(message: str, seconds: int = 4) -> None:
                 message,
                 str(seconds),
                 "--title",
-                "Decky-SteamAchievements Installer",
+                INSTALLER_DISPLAY_NAME,
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -1542,7 +1544,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         desktop = Path.home() / "Desktop"
         GUI_LOG_PATH = (
             desktop if desktop.is_dir() else Path.home()
-        ) / "Decky-SteamAchievements Installer.log"
+        ) / GUI_LOG_BASENAME
         require_executable("kdialog")
         require_executable("pkexec")
         _write_log("INFO", "Started graphical installer")

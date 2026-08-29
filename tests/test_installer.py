@@ -14,7 +14,7 @@ def installer_module():
     path = (
         Path(__file__).parents[1]
         / "installer"
-        / "Decky-SteamAchievementsInstaller"
+        / "DeckyUIRestoredInstaller"
         / "install_decky_plugin.py"
     )
     spec = importlib.util.spec_from_file_location("decky_steamachievements_installer", path)
@@ -39,6 +39,36 @@ def test_distribution_contract_is_canonical_and_stable(installer_module):
     )
     assert installer_module.DISTRIBUTION_RELEASE_TAG == ""
     assert installer_module.DISTRIBUTION_INCLUDE_PRERELEASE is False
+
+
+def test_graphical_installer_uses_one_current_brand_for_titles_and_log(
+    installer_module, monkeypatch: pytest.MonkeyPatch
+):
+    assert installer_module.INSTALLER_DISPLAY_NAME == "Decky UI Restored Installer"
+    assert installer_module.GUI_LOG_BASENAME == "Decky UI Restored Installer.log"
+
+    monkeypatch.setattr(installer_module, "GUI_ENABLED", True)
+    kdialog_run = Mock(return_value=Mock(returncode=0))
+    monkeypatch.setattr(installer_module.subprocess, "run", kdialog_run)
+
+    installer_module.gui_notice("notice")
+    installer_module.gui_error("error")
+    assert installer_module.gui_confirm("confirm") is True
+
+    commands = [call.args[0] for call in kdialog_run.call_args_list]
+    assert [command[1] for command in commands] == ["--msgbox", "--error", "--yesno"]
+    assert all(
+        command[-2:] == ["--title", installer_module.INSTALLER_DISPLAY_NAME]
+        for command in commands
+    )
+
+    popup = Mock()
+    monkeypatch.setattr(installer_module.subprocess, "Popen", popup)
+    installer_module.gui_status("status")
+    assert popup.call_args.args[0][-2:] == [
+        "--title",
+        installer_module.INSTALLER_DISPLAY_NAME,
+    ]
 
 
 def test_default_github_resolution_uses_latest_stable_endpoint(
