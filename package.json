@@ -1,6 +1,6 @@
 {
   "name": "decky-steamachievements",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Restores native Steam Deck interface behavior affected by Steam updates.",
   "type": "module",
   "scripts": {
