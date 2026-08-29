@@ -12,6 +12,8 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ### Changed
 
+- Brand the Desktop installer bundle, launcher, helper directory, dialogs, and log as Decky UI
+  Restored while retaining the compatibility-named `Decky-SteamAchievements.zip` plugin asset.
 - Replace the trophy plugin icon with a magic-wand icon that represents the broader
   collection of reversible Steam UI fixes.
 

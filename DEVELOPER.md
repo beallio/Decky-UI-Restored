@@ -130,12 +130,12 @@ installer archive after changing any of those files:
 bash installer/build_bundle.sh
 ```
 
-The command creates `installer/Decky-SteamAchievements Installer.zip`. Keep the
+The command creates `installer/Decky UI Restored Installer.zip`. Keep the
 configured GitHub repository URL and exact `Decky-SteamAchievements.zip`
-distribution asset aligned with the release workflow. The installer bundle,
-plugin ZIP, archive root, and installed directory use
-`Decky-SteamAchievements`; Decky's plugin list and opened QAM panel use the
-display name `Decky UI Restored`.
+distribution asset aligned with the release workflow. The Desktop installer
+bundle, launcher, helper directory, GUI title, and GUI log use `Decky UI
+Restored`; the plugin ZIP, archive root, and installed directory retain
+`Decky-SteamAchievements` for updater compatibility.
 
 ## Display-name migration
 

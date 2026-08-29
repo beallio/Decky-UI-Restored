@@ -101,11 +101,13 @@ shipped mechanism).
 - Reset Decky's retained QAM scroll position without calling native DOM
   `focus()`; let `preferredFocus` and Steam's gamepad navigation own focus so
   users can return to the description with the D-pad.
-- `installer/Decky-SteamAchievements Installer.zip` is built from the adjacent
-  specialized installer sources with `bash installer/build_bundle.sh`; keep its
-  GitHub repository URL and exact `Decky-SteamAchievements.zip` distribution
-  asset aligned with the release workflow. The installer bundle name is a
-  display artifact and deliberately differs from the canonical plugin ZIP.
+- `installer/Decky UI Restored Installer.zip` is built from the adjacent
+  specialized installer sources with `bash installer/build_bundle.sh`; its
+  launcher is `Install Decky UI Restored.desktop` and helper directory is
+  `DeckyUIRestoredInstaller/`. Keep its GitHub repository URL and exact
+  `Decky-SteamAchievements.zip` distribution asset aligned with the release
+  workflow. The Desktop installer brand deliberately differs from the canonical
+  plugin ZIP.
 - Updater discovery and integrity logic lives under `backend/updater/`; runtime
   cache and pending-install state live separately in
   `DECKY_PLUGIN_RUNTIME_DIR/updater-state.json` behind bounded `fcntl.flock` and
@@ -123,14 +125,17 @@ shipped mechanism).
 
 Two names, deliberately different. Do not "unify" them.
 
-- **Distribution: `Decky-SteamAchievements`** — matches the ZIP filename, ZIP root, installed
-  directory, settings/runtime/log directory, installer artifacts, backend log namespace, and
-  release asset. Its npm spelling remains `decky-steamachievements`. These paths are load-bearing
-  for in-place updates and must stay stable.
+- **Distribution: `Decky-SteamAchievements`** — matches the plugin ZIP filename, ZIP root,
+  installed directory, settings/runtime/log directory, backend log namespace, and release asset.
+  Its npm spelling remains `decky-steamachievements`. These paths are load-bearing for in-place
+  updates and must stay stable.
 - **Decky display: `Decky UI Restored`** — lives in `plugin.json` `name` and the frontend
   registration/title constants. Decky Loader overwrites `definePlugin().name` with the manifest
   name and renders that value in its plugin list; `titleView` uses the same display text for the
-  opened QAM panel.
+  opened QAM panel. It also brands the Desktop installer bundle `Decky UI Restored Installer.zip`,
+  launcher `Install Decky UI Restored.desktop`, helper `DeckyUIRestoredInstaller/`, KDialog title
+  `Decky UI Restored Installer`, and GUI log `Decky UI Restored Installer.log`; that installer
+  still downloads the compatibility-named `Decky-SteamAchievements.zip` plugin asset.
 - **GitHub repository: `beallio/Decky-UI-Restored`** — repository, badges, updater, store image,
   and Desktop installer URLs use this slug. GitHub redirects the former `Deck-UI-Restored` and
   `Decky-SteamAchievements` repository slugs for older clients; never reuse either slug.

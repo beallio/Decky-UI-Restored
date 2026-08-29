@@ -56,10 +56,10 @@ Decky Loader must already be installed.
 
 In SteamOS Desktop Mode:
 
-1. Download `Decky-SteamAchievements Installer.zip`.
+1. Download `Decky UI Restored Installer.zip`.
 2. Extract the ZIP directly onto the Desktop.
-3. Keep the extracted `Decky-SteamAchievementsInstaller` folder beside `Install Decky-SteamAchievements`.
-4. Double-click **Install Decky-SteamAchievements**.
+3. Keep the extracted `DeckyUIRestoredInstaller` folder beside `Install Decky UI Restored`.
+4. Double-click **Install Decky UI Restored**.
 5. Review the details and approve the administrator prompt.
 6. Return to Gaming Mode when installation finishes.
 
@@ -75,9 +75,9 @@ You can also install `Decky-SteamAchievements.zip` with Decky's built-in ZIP ins
 4. Open **Developer → Third-Party Plugins**.
 5. Choose **Install Plugin from ZIP File**, select the ZIP, and approve the installation.
 
-Use `Decky-SteamAchievements.zip` for this method. Do not select `Decky-SteamAchievements Installer.zip`; that file is the Desktop installer bundle.
+Use `Decky-SteamAchievements.zip` for this method. Do not select `Decky UI Restored Installer.zip`; that file is the Desktop installer bundle.
 
-Decky shows the installed plugin as **Decky UI Restored**. The download and installed folder keep the older `Decky-SteamAchievements` name so existing installations can update safely.
+Decky shows the installed plugin as **Decky UI Restored**. The Desktop installer uses that current name, while the plugin download and installed folder retain `Decky-SteamAchievements` so existing installations can update safely.
 
 ## Development
 
