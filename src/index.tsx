@@ -1,7 +1,7 @@
 import { definePlugin, toaster } from "@decky/api";
 import { staticClasses } from "@decky/ui";
 import { useEffect, useRef, useState } from "react";
-import { FaTrophy } from "react-icons/fa6";
+import { MdAutoFixHigh } from "react-icons/md";
 import {
   getSettings,
   getUpdateCheckContextCall,
@@ -178,7 +178,7 @@ export default definePlugin(() => {
     name: PLUGIN_NAME,
     titleView: <div className={staticClasses.Title}>{QAM_TITLE}</div>,
     content: <Content coordinator={coordinator} />,
-    icon: <FaTrophy />,
+    icon: <MdAutoFixHigh />,
     onDismount() {
       updatePoller.dispose();
       coordinator.dispose();
