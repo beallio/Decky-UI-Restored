@@ -10,6 +10,7 @@ import {
   setDebugLogging,
   setFeatureEnabled,
   setHomeCarouselFixEnabled,
+  setKeyboardChordFixEnabled,
   setUpdateChannelCall,
   checkForPluginUpdateCall,
   markUpdateNotifiedCall,
@@ -18,6 +19,7 @@ import {
 } from "./backend";
 import { installAchievementBarPatch } from "./achievementBar";
 import { installHomeCarouselTitleFix } from "./homeCarouselTitleFix";
+import { installKeyboardChordFix } from "./keyboardChordFix";
 import { PluginPanelContent } from "./components/PluginPanelContent";
 import {
   resetDescriptionScroll,
@@ -32,6 +34,7 @@ const QAM_TITLE = "Decky UI Restored";
 const DEFAULT_SETTINGS: PluginSettings = {
   feature_enabled: true,
   home_carousel_fix_enabled: false,
+  keyboard_chord_fix_enabled: false,
   debug_logging: false,
   update_channel: "stable",
   automatic_update_checks: true,
@@ -47,6 +50,7 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
     loaded: settingsLoaded,
     featureBusy,
     homeCarouselFixBusy,
+    keyboardChordFixBusy,
     debugBusy,
     updateChannelBusy,
     automaticChecksBusy,
@@ -105,6 +109,10 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
     await coordinator.setHomeCarouselFixEnabled(enabled);
   };
 
+  const saveKeyboardChordFix = async (enabled: boolean) => {
+    await coordinator.setKeyboardChordFixEnabled(enabled);
+  };
+
   const confirmInstalledPluginVersion = (version: string) => {
     setVersions((current) => ({ ...current, plugin: version }));
   };
@@ -116,12 +124,14 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
       settingsLoaded={settingsLoaded}
       featureBusy={featureBusy}
       homeCarouselFixBusy={homeCarouselFixBusy}
+      keyboardChordFixBusy={keyboardChordFixBusy}
       debugBusy={debugBusy}
       updateChannelBusy={updateChannelBusy}
       automaticChecksBusy={automaticChecksBusy}
       versions={versions}
       onFeatureChange={(enabled) => void saveFeature(enabled)}
       onHomeCarouselFixChange={(enabled) => void saveHomeCarouselFix(enabled)}
+      onKeyboardChordFixChange={(enabled) => void saveKeyboardChordFix(enabled)}
       onDebugChange={(enabled) => void saveDebug(enabled)}
       onUpdateChannelChange={(channel) => void coordinator.setUpdateChannel(channel)}
       onAutomaticChecksChange={(enabled) =>
@@ -142,13 +152,19 @@ export default definePlugin(() => {
     installHomeCarouselTitleFix,
     (error) => log.error("plugin", "Home-carousel fix lifecycle failed", error),
   );
+  const keyboardChordController = new FeatureController(
+    installKeyboardChordFix,
+    (error) => log.error("plugin", "keyboard chord fix lifecycle failed", error),
+  );
   const coordinator = new SettingsCoordinator({
     achievementController,
     homeCarouselController,
+    keyboardChordController,
     defaults: DEFAULT_SETTINGS,
     loadSettings: getSettings,
     setFeatureEnabled,
     setHomeCarouselFixEnabled,
+    setKeyboardChordFixEnabled,
     setDebugLogging,
     setUpdateChannel: setUpdateChannelCall,
     setAutomaticUpdateChecks: setAutomaticUpdateChecksCall,

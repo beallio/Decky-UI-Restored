@@ -5,6 +5,7 @@ import type { PluginSettings } from "./backend";
 const defaults: PluginSettings = {
   feature_enabled: true,
   home_carousel_fix_enabled: false,
+  keyboard_chord_fix_enabled: false,
   debug_logging: false,
   update_channel: "stable",
   automatic_update_checks: true,
@@ -23,6 +24,7 @@ function deferred<T>() {
 function harness() {
   let achievementEnabled = false;
   let homeCarouselEnabled = false;
+  let keyboardChordEnabled = false;
   const achievementController = {
     get enabled() {
       return achievementEnabled;
@@ -47,6 +49,18 @@ function harness() {
       homeCarouselEnabled = false;
     }),
   };
+  const keyboardChordController = {
+    get enabled() {
+      return keyboardChordEnabled;
+    },
+    setEnabled: vi.fn((next: boolean) => {
+      keyboardChordEnabled = next;
+      return true;
+    }),
+    dispose: vi.fn(() => {
+      keyboardChordEnabled = false;
+    }),
+  };
   const loadSettings = vi.fn(async () => defaults);
   const setFeatureEnabled = vi.fn(async (feature_enabled: boolean) => ({
     ...defaults,
@@ -56,6 +70,12 @@ function harness() {
     async (home_carousel_fix_enabled: boolean) => ({
       ...defaults,
       home_carousel_fix_enabled,
+    }),
+  );
+  const setKeyboardChordFixEnabled = vi.fn(
+    async (keyboard_chord_fix_enabled: boolean) => ({
+      ...defaults,
+      keyboard_chord_fix_enabled,
     }),
   );
   const setDebugLogging = vi.fn(async (debug_logging: boolean) => ({
@@ -75,10 +95,12 @@ function harness() {
   const coordinator = new SettingsCoordinator({
     achievementController,
     homeCarouselController,
+    keyboardChordController,
     defaults,
     loadSettings,
     setFeatureEnabled,
     setHomeCarouselFixEnabled,
+    setKeyboardChordFixEnabled,
     setDebugLogging,
     setUpdateChannel,
     setAutomaticUpdateChecks,
@@ -88,6 +110,7 @@ function harness() {
   return {
     achievementController,
     homeCarouselController,
+    keyboardChordController,
     coordinator,
     loadSettings,
     onError,
@@ -96,6 +119,7 @@ function harness() {
     setAutomaticUpdateChecks,
     setFeatureEnabled,
     setHomeCarouselFixEnabled,
+    setKeyboardChordFixEnabled,
     setVerboseLogging,
   };
 }
@@ -224,6 +248,7 @@ describe("SettingsCoordinator", () => {
       expect(() => test.coordinator.dispose()).not.toThrow();
       expect(test.achievementController.dispose).toHaveBeenCalledOnce();
       expect(test.homeCarouselController.dispose).toHaveBeenCalledOnce();
+      expect(test.keyboardChordController.dispose).toHaveBeenCalledOnce();
       if (achievementThrows) {
         expect(test.onError).toHaveBeenCalledWith(
           "feature",
@@ -328,5 +353,33 @@ describe("SettingsCoordinator", () => {
     await test.coordinator.setHomeCarouselFixEnabled(true);
     expect(test.setHomeCarouselFixEnabled).not.toHaveBeenCalledWith(true);
     expect(test.coordinator.snapshot.settings.home_carousel_fix_enabled).toBe(false);
+  });
+  it("optimistically controls the keyboard chord fix, then rolls back persistence or installation failures", async () => {
+    const save = deferred<typeof defaults>();
+    const test = harness();
+    test.setKeyboardChordFixEnabled.mockReturnValue(save.promise);
+    test.coordinator.start();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const requested = test.coordinator.setKeyboardChordFixEnabled(true);
+    expect(test.coordinator.snapshot.keyboardChordFixBusy).toBe(true);
+    await Promise.resolve();
+    expect(test.keyboardChordController.setEnabled).toHaveBeenLastCalledWith(true);
+    expect(test.coordinator.snapshot.settings.keyboard_chord_fix_enabled).toBe(true);
+
+    save.reject(new Error("keyboard chord save failed"));
+    await requested;
+    expect(test.keyboardChordController.setEnabled).toHaveBeenLastCalledWith(false);
+    expect(test.coordinator.snapshot.settings.keyboard_chord_fix_enabled).toBe(false);
+    expect(test.coordinator.snapshot.keyboardChordFixBusy).toBe(false);
+    expect(test.onError).toHaveBeenCalledWith("keyboardChordFix", expect.any(Error));
+
+    // An install failure must not be persisted as an enabled setting.
+    test.setKeyboardChordFixEnabled.mockClear();
+    test.keyboardChordController.setEnabled.mockImplementationOnce(() => false);
+    await test.coordinator.setKeyboardChordFixEnabled(true);
+    expect(test.setKeyboardChordFixEnabled).not.toHaveBeenCalledWith(true);
+    expect(test.coordinator.snapshot.settings.keyboard_chord_fix_enabled).toBe(false);
   });
 });

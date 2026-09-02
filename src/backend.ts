@@ -3,6 +3,7 @@ import { callable } from "@decky/api";
 export type PluginSettings = {
   feature_enabled: boolean;
   home_carousel_fix_enabled: boolean;
+  keyboard_chord_fix_enabled: boolean;
   debug_logging: boolean;
   update_channel: UpdateChannel;
   automatic_update_checks: boolean;
@@ -74,6 +75,9 @@ export const setFeatureEnabled = callable<[boolean], PluginSettings>(
 );
 export const setHomeCarouselFixEnabled = callable<[boolean], PluginSettings>(
   "set_home_carousel_fix_enabled",
+);
+export const setKeyboardChordFixEnabled = callable<[boolean], PluginSettings>(
+  "set_keyboard_chord_fix_enabled",
 );
 export const setDebugLogging = callable<[boolean], PluginSettings>(
   "set_debug_logging",

@@ -37,6 +37,7 @@ vi.mock("../utils/deckyInstaller", () => ({
 import { FocusablePanel } from "./FocusablePanel";
 import { RestoreMiniAchievementsSection } from "./RestoreMiniAchievementsSection";
 import { HomeCarouselTitleFixSection } from "./HomeCarouselTitleFixSection";
+import { KeyboardChordFixSection } from "./KeyboardChordFixSection";
 import { SettingsSection } from "./SettingsSection";
 import { VersionsSection } from "./VersionsSection";
 import { PluginUpdateSection } from "./PluginUpdateSection";
@@ -335,6 +336,7 @@ describe("focusable QAM sections", () => {
       settings: {
         feature_enabled: true,
         home_carousel_fix_enabled: false,
+        keyboard_chord_fix_enabled: false,
         debug_logging: false,
         update_channel: "stable",
         automatic_update_checks: true,
@@ -342,12 +344,14 @@ describe("focusable QAM sections", () => {
       settingsLoaded: true,
       featureBusy: false,
       homeCarouselFixBusy: false,
+      keyboardChordFixBusy: false,
       debugBusy: false,
       updateChannelBusy: false,
       automaticChecksBusy: false,
       versions: { plugin: "0.1.1", decky: "3.2.6", steamos: "3.8" },
       onFeatureChange: vi.fn(),
       onHomeCarouselFixChange: vi.fn(),
+      onKeyboardChordFixChange: vi.fn(),
       onDebugChange: vi.fn(),
       onUpdateChannelChange: vi.fn(),
       onAutomaticChecksChange: vi.fn(),
@@ -356,6 +360,7 @@ describe("focusable QAM sections", () => {
     expect(tree.props.children.map((child: any) => child.type)).toEqual([
       RestoreMiniAchievementsSection,
       HomeCarouselTitleFixSection,
+      KeyboardChordFixSection,
       SettingsSection,
       PluginUpdateSection,
       VersionsSection,

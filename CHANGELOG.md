@@ -10,6 +10,15 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
+### Added
+
+- Add an opt-in On-Screen Keyboard Shortcut fix that restores STEAM + X when no game is
+  running. Steam's `OnModalKeyboardMessage` discards the chord because the client sends the
+  Steam UI's own app id where the handler expects its empty-app sentinel, so the keyboard
+  never mounts. The fix observes the same multicast keyboard message and re-dispatches it
+  with the expected app id. Closing is left to Steam, whose toggle-close branch runs before
+  the faulty check and already works.
+
 ## [0.2.2] - 2026-08-28
 
 Refreshes the Desktop installer branding and plugin icon while preserving update compatibility.

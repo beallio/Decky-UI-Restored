@@ -3,6 +3,7 @@ import type { PluginSettings, UpdateChannel } from "./backend";
 type SettingOperation =
   | "feature"
   | "homeCarouselFix"
+  | "keyboardChordFix"
   | "debug"
   | "updateChannel"
   | "automaticChecks";
@@ -18,6 +19,7 @@ export type SettingsSnapshot = {
   loaded: boolean;
   featureBusy: boolean;
   homeCarouselFixBusy: boolean;
+  keyboardChordFixBusy: boolean;
   debugBusy: boolean;
   updateChannelBusy: boolean;
   automaticChecksBusy: boolean;
@@ -26,10 +28,12 @@ export type SettingsSnapshot = {
 type SettingsCoordinatorOptions = {
   achievementController: ToggleableFeature;
   homeCarouselController: ToggleableFeature;
+  keyboardChordController: ToggleableFeature;
   defaults: PluginSettings;
   loadSettings: () => Promise<PluginSettings>;
   setFeatureEnabled: (enabled: boolean) => Promise<PluginSettings>;
   setHomeCarouselFixEnabled: (enabled: boolean) => Promise<PluginSettings>;
+  setKeyboardChordFixEnabled: (enabled: boolean) => Promise<PluginSettings>;
   setDebugLogging: (enabled: boolean) => Promise<PluginSettings>;
   setUpdateChannel: (channel: UpdateChannel) => Promise<PluginSettings>;
   setAutomaticUpdateChecks: (enabled: boolean) => Promise<PluginSettings>;
@@ -58,6 +62,7 @@ export class SettingsCoordinator {
       loaded: false,
       featureBusy: false,
       homeCarouselFixBusy: false,
+      keyboardChordFixBusy: false,
       debugBusy: false,
       updateChannelBusy: false,
       automaticChecksBusy: false,
@@ -104,6 +109,10 @@ export class SettingsCoordinator {
     return this.enqueue("homeCarouselFix", enabled);
   }
 
+  setKeyboardChordFixEnabled(enabled: boolean): Promise<void> {
+    return this.enqueue("keyboardChordFix", enabled);
+  }
+
   setDebugLogging(enabled: boolean): Promise<void> {
     return this.enqueue("debug", enabled);
   }
@@ -129,6 +138,11 @@ export class SettingsCoordinator {
       this.options.homeCarouselController.dispose();
     } catch (error) {
       this.reportError("homeCarouselFix", error);
+    }
+    try {
+      this.options.keyboardChordController.dispose();
+    } catch (error) {
+      this.reportError("keyboardChordFix", error);
     }
   }
 
@@ -165,6 +179,13 @@ export class SettingsCoordinator {
     ) {
       next.home_carousel_fix_enabled = this.options.homeCarouselController.enabled;
     }
+    if (
+      !this.options.keyboardChordController.setEnabled(
+        next.keyboard_chord_fix_enabled,
+      )
+    ) {
+      next.keyboard_chord_fix_enabled = this.options.keyboardChordController.enabled;
+    }
     this.options.setVerboseLogging(next.debug_logging);
     this.update({ settings: next });
   }
@@ -179,6 +200,8 @@ export class SettingsCoordinator {
         ? "featureBusy"
         : operation === "homeCarouselFix"
           ? "homeCarouselFixBusy"
+          : operation === "keyboardChordFix"
+          ? "keyboardChordFixBusy"
           : operation === "debug"
           ? "debugBusy"
           : operation === "updateChannel"
@@ -220,6 +243,21 @@ export class SettingsCoordinator {
         this.update({
           settings: { ...previous, home_carousel_fix_enabled: enabled },
         });
+      } else if (operation === "keyboardChordFix") {
+        const enabled = value as boolean;
+        if (!this.options.keyboardChordController.setEnabled(enabled)) {
+          this.update({
+            settings: {
+              ...previous,
+              keyboard_chord_fix_enabled:
+                this.options.keyboardChordController.enabled,
+            },
+          });
+          return;
+        }
+        this.update({
+          settings: { ...previous, keyboard_chord_fix_enabled: enabled },
+        });
       } else if (operation === "debug") {
         const enabled = value as boolean;
         this.options.setVerboseLogging(enabled);
@@ -242,6 +280,8 @@ export class SettingsCoordinator {
           saved = await this.options.setFeatureEnabled(value as boolean);
         } else if (operation === "homeCarouselFix") {
           saved = await this.options.setHomeCarouselFixEnabled(value as boolean);
+        } else if (operation === "keyboardChordFix") {
+          saved = await this.options.setKeyboardChordFixEnabled(value as boolean);
         } else if (operation === "debug") {
           saved = await this.options.setDebugLogging(value as boolean);
         } else if (operation === "updateChannel") {

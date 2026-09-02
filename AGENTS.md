@@ -74,6 +74,20 @@ shipped mechanism).
   unrelated classes. React-aware teardown restores only tokens still expected
   by the element's live React `className`.
 
+- The optional on-screen keyboard chord fix (`src/keyboardChordFix.ts`) repairs
+  STEAM + X. Steam's `OnModalKeyboardMessage` drops the chord via
+  `if (e.nAppID != Pe.sc && t.MainRunningAppID != e.nAppID) return;`: on the Home
+  screen the client sends appid 769 while `MainRunningAppID` is correctly
+  `undefined`, so the keyboard never mounts. That handler is a non-writable,
+  non-configurable own property and cannot be patched; register a second
+  `SteamClient.Input.RegisterForUserKeyboardMessages` callback (they are
+  multicast) and re-dispatch with `nAppID: 0`.
+- Steam's own chord handler runs about 100ms *after* the message. Re-dispatch on a
+  ~300ms delay so Steam goes first; dispatching immediately opens the keyboard and
+  Steam's late handler then closes it again via its toggle branch, which sits
+  before the faulty appid check. Only opening needs repair — sample the keyboard
+  state when the message arrives and leave an already-open keyboard to Steam.
+
 ## Orchestration
 
 - `scripts/orchestration` symlinks the shared engine (`../../agent-orchestration`).
@@ -90,9 +104,9 @@ shipped mechanism).
 - Prefer resilient lookups and graceful failure — a broken patch must never crash
   the Steam UI (wrap in try/catch, log, no-op on failure).
 - Persistent settings live in Decky's plugin settings directory and default to
-  achievement restoration enabled, the Home carousel title fix disabled,
-  verbose diagnostics disabled, the stable update channel, and automatic update
-  checks enabled.
+  achievement restoration enabled, the Home carousel title fix disabled, the
+  on-screen keyboard chord fix disabled, verbose diagnostics disabled, the stable
+  update channel, and automatic update checks enabled.
 - Disabling restoration must clean injected props from mounted instances, not
   only remove route/prototype patches.
 - Report the installed plugin version from the packaged manifest; resolve Decky

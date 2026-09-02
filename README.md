@@ -26,6 +26,14 @@ The optional Home Carousel Title Fix clears that stuck state while you move thro
 | --- | --- |
 | ![Home carousel before the fix, with the first game title and raised tile still visible](assets/home-carousel-before.png) | ![Home carousel after the fix, with the first game returned to its normal resting state](assets/home-carousel-after.png) |
 
+### On-screen keyboard shortcut
+
+STEAM + X stopped opening the on-screen keyboard when no game is running. Steam sends the wrong application number with the shortcut, so its own keyboard handler refuses the request and no keyboard appears.
+
+The optional On-Screen Keyboard Shortcut fix repairs the shortcut in Big Picture and Desktop modes. It only opens the keyboard. Closing the keyboard is not affected, because that part of Steam continues to work correctly.
+
+If a later Steam update repairs the shortcut, the fix stays quiet and lets Steam open the keyboard.
+
 ## Using the plugin
 
 Open **Quick Access → Decky → Decky UI Restored**.
@@ -34,6 +42,7 @@ The panel contains:
 
 - **Restore Mini Achievements** — turns the achievement progress bar on or off. It is on by default.
 - **Home Carousel Title Fix** — fixes the stuck Home carousel highlight. It is off by default.
+- **On-Screen Keyboard Shortcut** — restores STEAM + X when no game is running. It is off by default.
 - **Settings** — includes optional debug logging for troubleshooting.
 - **Updates** — checks for new versions and lets Decky install them.
 - **Versions** — shows the installed plugin, Decky Loader, and SteamOS versions.

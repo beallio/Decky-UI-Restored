@@ -40,6 +40,7 @@ def test_settings_defaults_and_persistence(plugin_module, tmp_path: Path):
     assert asyncio.run(plugin.get_settings()) == {
         "feature_enabled": True,
         "home_carousel_fix_enabled": False,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -48,6 +49,7 @@ def test_settings_defaults_and_persistence(plugin_module, tmp_path: Path):
     assert asyncio.run(plugin.set_feature_enabled(False)) == {
         "feature_enabled": False,
         "home_carousel_fix_enabled": False,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -55,6 +57,7 @@ def test_settings_defaults_and_persistence(plugin_module, tmp_path: Path):
     assert asyncio.run(plugin.set_home_carousel_fix_enabled(True)) == {
         "feature_enabled": False,
         "home_carousel_fix_enabled": True,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -62,6 +65,7 @@ def test_settings_defaults_and_persistence(plugin_module, tmp_path: Path):
     assert asyncio.run(plugin.set_debug_logging(True)) == {
         "feature_enabled": False,
         "home_carousel_fix_enabled": True,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": True,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -71,6 +75,7 @@ def test_settings_defaults_and_persistence(plugin_module, tmp_path: Path):
     assert json.loads(path.read_text(encoding="utf-8")) == {
         "feature_enabled": False,
         "home_carousel_fix_enabled": True,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": True,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -87,6 +92,7 @@ def test_settings_recover_from_malformed_and_invalid_values(plugin_module, tmp_p
     assert asyncio.run(module.Plugin().get_settings()) == {
         "feature_enabled": True,
         "home_carousel_fix_enabled": False,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -95,6 +101,7 @@ def test_settings_recover_from_malformed_and_invalid_values(plugin_module, tmp_p
     assert asyncio.run(module.Plugin().get_settings()) == {
         "feature_enabled": True,
         "home_carousel_fix_enabled": False,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -113,6 +120,7 @@ def test_old_settings_migrate_on_next_mutation_without_reset(plugin_module, tmp_
     assert asyncio.run(plugin.get_settings()) == {
         "feature_enabled": False,
         "home_carousel_fix_enabled": False,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": True,
         "update_channel": "stable",
         "automatic_update_checks": True,
@@ -126,6 +134,7 @@ def test_old_settings_migrate_on_next_mutation_without_reset(plugin_module, tmp_
     assert json.loads(path.read_text(encoding="utf-8")) == {
         "feature_enabled": False,
         "home_carousel_fix_enabled": False,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": True,
         "update_channel": "development",
         "automatic_update_checks": True,
@@ -190,6 +199,7 @@ def test_independent_settings_holders_preserve_overlapping_mutations(
     ) == {
         "feature_enabled": False,
         "home_carousel_fix_enabled": False,
+        "keyboard_chord_fix_enabled": False,
         "debug_logging": False,
         "update_channel": "development",
         "automatic_update_checks": True,
@@ -215,6 +225,32 @@ def test_home_carousel_fix_rejects_non_boolean_values(plugin_module):
 
     with pytest.raises(TypeError, match="home_carousel_fix_enabled must be a boolean"):
         asyncio.run(plugin.set_home_carousel_fix_enabled("true"))
+
+
+def test_keyboard_chord_fix_persists_and_rejects_non_boolean_values(
+    plugin_module, tmp_path: Path
+):
+    module, _decky = plugin_module
+    plugin = module.Plugin()
+
+    assert asyncio.run(plugin.set_keyboard_chord_fix_enabled(True)) == {
+        "feature_enabled": True,
+        "home_carousel_fix_enabled": False,
+        "keyboard_chord_fix_enabled": True,
+        "debug_logging": False,
+        "update_channel": "stable",
+        "automatic_update_checks": True,
+    }
+    path = tmp_path / "settings" / "settings.json"
+    assert (
+        json.loads(path.read_text(encoding="utf-8"))["keyboard_chord_fix_enabled"]
+        is True
+    )
+
+    with pytest.raises(
+        TypeError, match="keyboard_chord_fix_enabled must be a boolean"
+    ):
+        asyncio.run(plugin.set_keyboard_chord_fix_enabled("true"))
 
 
 def test_update_rpcs_persist_separate_runtime_state(plugin_module, tmp_path: Path):

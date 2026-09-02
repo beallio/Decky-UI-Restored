@@ -2,6 +2,7 @@ import type { Ref } from "react";
 import type { PluginSettings, UpdateChannel, Versions } from "../backend";
 import { FocusablePanel } from "./FocusablePanel";
 import { HomeCarouselTitleFixSection } from "./HomeCarouselTitleFixSection";
+import { KeyboardChordFixSection } from "./KeyboardChordFixSection";
 import { PluginUpdateSection } from "./PluginUpdateSection";
 import { RestoreMiniAchievementsSection } from "./RestoreMiniAchievementsSection";
 import { SettingsSection } from "./SettingsSection";
@@ -13,12 +14,14 @@ type Props = {
   settingsLoaded: boolean;
   featureBusy: boolean;
   homeCarouselFixBusy: boolean;
+  keyboardChordFixBusy: boolean;
   debugBusy: boolean;
   updateChannelBusy: boolean;
   automaticChecksBusy: boolean;
   versions: Versions;
   onFeatureChange: (enabled: boolean) => void;
   onHomeCarouselFixChange: (enabled: boolean) => void;
+  onKeyboardChordFixChange: (enabled: boolean) => void;
   onDebugChange: (enabled: boolean) => void;
   onUpdateChannelChange: (channel: UpdateChannel) => void;
   onAutomaticChecksChange: (enabled: boolean) => void;
@@ -40,6 +43,12 @@ export function PluginPanelContent(props: Props) {
         settingsLoaded={props.settingsLoaded}
         busy={props.homeCarouselFixBusy}
         onChange={props.onHomeCarouselFixChange}
+      />
+      <KeyboardChordFixSection
+        enabled={props.settings.keyboard_chord_fix_enabled}
+        settingsLoaded={props.settingsLoaded}
+        busy={props.keyboardChordFixBusy}
+        onChange={props.onKeyboardChordFixChange}
       />
       <SettingsSection
         debugLogging={props.settings.debug_logging}

@@ -26,6 +26,7 @@ Settings = dict[str, object]
 DEFAULT_SETTINGS: Settings = {
     "feature_enabled": True,
     "home_carousel_fix_enabled": False,
+    "keyboard_chord_fix_enabled": False,
     "debug_logging": False,
     "update_channel": "stable",
     "automatic_update_checks": True,
@@ -44,6 +45,11 @@ def _normalize_settings(value: Any) -> Settings:
         "home_carousel_fix_enabled": (
             data["home_carousel_fix_enabled"]
             if isinstance(data.get("home_carousel_fix_enabled"), bool)
+            else False
+        ),
+        "keyboard_chord_fix_enabled": (
+            data["keyboard_chord_fix_enabled"]
+            if isinstance(data.get("keyboard_chord_fix_enabled"), bool)
             else False
         ),
         "debug_logging": (
@@ -271,6 +277,11 @@ class Plugin:
         if not isinstance(enabled, bool):
             raise TypeError("home_carousel_fix_enabled must be a boolean")
         return self._save_setting("home_carousel_fix_enabled", enabled)
+
+    async def set_keyboard_chord_fix_enabled(self, enabled: bool) -> Settings:
+        if not isinstance(enabled, bool):
+            raise TypeError("keyboard_chord_fix_enabled must be a boolean")
+        return self._save_setting("keyboard_chord_fix_enabled", enabled)
 
     async def set_debug_logging(self, enabled: bool) -> Settings:
         if not isinstance(enabled, bool):
