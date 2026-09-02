@@ -4,6 +4,7 @@ type SettingOperation =
   | "feature"
   | "homeCarouselFix"
   | "keyboardChordFix"
+  | "keyboardScrollRestore"
   | "debug"
   | "updateChannel"
   | "automaticChecks";
@@ -20,6 +21,7 @@ export type SettingsSnapshot = {
   featureBusy: boolean;
   homeCarouselFixBusy: boolean;
   keyboardChordFixBusy: boolean;
+  keyboardScrollRestoreBusy: boolean;
   debugBusy: boolean;
   updateChannelBusy: boolean;
   automaticChecksBusy: boolean;
@@ -29,11 +31,13 @@ type SettingsCoordinatorOptions = {
   achievementController: ToggleableFeature;
   homeCarouselController: ToggleableFeature;
   keyboardChordController: ToggleableFeature;
+  keyboardScrollController: ToggleableFeature;
   defaults: PluginSettings;
   loadSettings: () => Promise<PluginSettings>;
   setFeatureEnabled: (enabled: boolean) => Promise<PluginSettings>;
   setHomeCarouselFixEnabled: (enabled: boolean) => Promise<PluginSettings>;
   setKeyboardChordFixEnabled: (enabled: boolean) => Promise<PluginSettings>;
+  setKeyboardScrollRestoreEnabled: (enabled: boolean) => Promise<PluginSettings>;
   setDebugLogging: (enabled: boolean) => Promise<PluginSettings>;
   setUpdateChannel: (channel: UpdateChannel) => Promise<PluginSettings>;
   setAutomaticUpdateChecks: (enabled: boolean) => Promise<PluginSettings>;
@@ -63,6 +67,7 @@ export class SettingsCoordinator {
       featureBusy: false,
       homeCarouselFixBusy: false,
       keyboardChordFixBusy: false,
+      keyboardScrollRestoreBusy: false,
       debugBusy: false,
       updateChannelBusy: false,
       automaticChecksBusy: false,
@@ -113,6 +118,10 @@ export class SettingsCoordinator {
     return this.enqueue("keyboardChordFix", enabled);
   }
 
+  setKeyboardScrollRestoreEnabled(enabled: boolean): Promise<void> {
+    return this.enqueue("keyboardScrollRestore", enabled);
+  }
+
   setDebugLogging(enabled: boolean): Promise<void> {
     return this.enqueue("debug", enabled);
   }
@@ -143,6 +152,11 @@ export class SettingsCoordinator {
       this.options.keyboardChordController.dispose();
     } catch (error) {
       this.reportError("keyboardChordFix", error);
+    }
+    try {
+      this.options.keyboardScrollController.dispose();
+    } catch (error) {
+      this.reportError("keyboardScrollRestore", error);
     }
   }
 
@@ -186,6 +200,14 @@ export class SettingsCoordinator {
     ) {
       next.keyboard_chord_fix_enabled = this.options.keyboardChordController.enabled;
     }
+    if (
+      !this.options.keyboardScrollController.setEnabled(
+        next.keyboard_scroll_restore_enabled,
+      )
+    ) {
+      next.keyboard_scroll_restore_enabled =
+        this.options.keyboardScrollController.enabled;
+    }
     this.options.setVerboseLogging(next.debug_logging);
     this.update({ settings: next });
   }
@@ -202,6 +224,8 @@ export class SettingsCoordinator {
           ? "homeCarouselFixBusy"
           : operation === "keyboardChordFix"
           ? "keyboardChordFixBusy"
+          : operation === "keyboardScrollRestore"
+          ? "keyboardScrollRestoreBusy"
           : operation === "debug"
           ? "debugBusy"
           : operation === "updateChannel"
@@ -258,6 +282,21 @@ export class SettingsCoordinator {
         this.update({
           settings: { ...previous, keyboard_chord_fix_enabled: enabled },
         });
+      } else if (operation === "keyboardScrollRestore") {
+        const enabled = value as boolean;
+        if (!this.options.keyboardScrollController.setEnabled(enabled)) {
+          this.update({
+            settings: {
+              ...previous,
+              keyboard_scroll_restore_enabled:
+                this.options.keyboardScrollController.enabled,
+            },
+          });
+          return;
+        }
+        this.update({
+          settings: { ...previous, keyboard_scroll_restore_enabled: enabled },
+        });
       } else if (operation === "debug") {
         const enabled = value as boolean;
         this.options.setVerboseLogging(enabled);
@@ -282,6 +321,8 @@ export class SettingsCoordinator {
           saved = await this.options.setHomeCarouselFixEnabled(value as boolean);
         } else if (operation === "keyboardChordFix") {
           saved = await this.options.setKeyboardChordFixEnabled(value as boolean);
+        } else if (operation === "keyboardScrollRestore") {
+          saved = await this.options.setKeyboardScrollRestoreEnabled(value as boolean);
         } else if (operation === "debug") {
           saved = await this.options.setDebugLogging(value as boolean);
         } else if (operation === "updateChannel") {

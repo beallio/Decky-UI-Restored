@@ -6,6 +6,7 @@ const defaults: PluginSettings = {
   feature_enabled: true,
   home_carousel_fix_enabled: false,
   keyboard_chord_fix_enabled: false,
+  keyboard_scroll_restore_enabled: false,
   debug_logging: false,
   update_channel: "stable",
   automatic_update_checks: true,
@@ -25,6 +26,7 @@ function harness() {
   let achievementEnabled = false;
   let homeCarouselEnabled = false;
   let keyboardChordEnabled = false;
+  let keyboardScrollEnabled = false;
   const achievementController = {
     get enabled() {
       return achievementEnabled;
@@ -61,6 +63,18 @@ function harness() {
       keyboardChordEnabled = false;
     }),
   };
+  const keyboardScrollController = {
+    get enabled() {
+      return keyboardScrollEnabled;
+    },
+    setEnabled: vi.fn((next: boolean) => {
+      keyboardScrollEnabled = next;
+      return true;
+    }),
+    dispose: vi.fn(() => {
+      keyboardScrollEnabled = false;
+    }),
+  };
   const loadSettings = vi.fn(async () => defaults);
   const setFeatureEnabled = vi.fn(async (feature_enabled: boolean) => ({
     ...defaults,
@@ -76,6 +90,12 @@ function harness() {
     async (keyboard_chord_fix_enabled: boolean) => ({
       ...defaults,
       keyboard_chord_fix_enabled,
+    }),
+  );
+  const setKeyboardScrollRestoreEnabled = vi.fn(
+    async (keyboard_scroll_restore_enabled: boolean) => ({
+      ...defaults,
+      keyboard_scroll_restore_enabled,
     }),
   );
   const setDebugLogging = vi.fn(async (debug_logging: boolean) => ({
@@ -96,11 +116,13 @@ function harness() {
     achievementController,
     homeCarouselController,
     keyboardChordController,
+    keyboardScrollController,
     defaults,
     loadSettings,
     setFeatureEnabled,
     setHomeCarouselFixEnabled,
     setKeyboardChordFixEnabled,
+    setKeyboardScrollRestoreEnabled,
     setDebugLogging,
     setUpdateChannel,
     setAutomaticUpdateChecks,
@@ -111,6 +133,7 @@ function harness() {
     achievementController,
     homeCarouselController,
     keyboardChordController,
+    keyboardScrollController,
     coordinator,
     loadSettings,
     onError,
@@ -120,6 +143,7 @@ function harness() {
     setFeatureEnabled,
     setHomeCarouselFixEnabled,
     setKeyboardChordFixEnabled,
+    setKeyboardScrollRestoreEnabled,
     setVerboseLogging,
   };
 }
@@ -249,6 +273,7 @@ describe("SettingsCoordinator", () => {
       expect(test.achievementController.dispose).toHaveBeenCalledOnce();
       expect(test.homeCarouselController.dispose).toHaveBeenCalledOnce();
       expect(test.keyboardChordController.dispose).toHaveBeenCalledOnce();
+      expect(test.keyboardScrollController.dispose).toHaveBeenCalledOnce();
       if (achievementThrows) {
         expect(test.onError).toHaveBeenCalledWith(
           "feature",
@@ -381,5 +406,32 @@ describe("SettingsCoordinator", () => {
     await test.coordinator.setKeyboardChordFixEnabled(true);
     expect(test.setKeyboardChordFixEnabled).not.toHaveBeenCalledWith(true);
     expect(test.coordinator.snapshot.settings.keyboard_chord_fix_enabled).toBe(false);
+  });
+  it("optimistically controls keyboard scroll restore, then rolls back persistence or installation failures", async () => {
+    const save = deferred<typeof defaults>();
+    const test = harness();
+    test.setKeyboardScrollRestoreEnabled.mockReturnValue(save.promise);
+    test.coordinator.start();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const requested = test.coordinator.setKeyboardScrollRestoreEnabled(true);
+    expect(test.coordinator.snapshot.keyboardScrollRestoreBusy).toBe(true);
+    await Promise.resolve();
+    expect(test.keyboardScrollController.setEnabled).toHaveBeenLastCalledWith(true);
+    expect(test.coordinator.snapshot.settings.keyboard_scroll_restore_enabled).toBe(true);
+
+    save.reject(new Error("scroll restore save failed"));
+    await requested;
+    expect(test.keyboardScrollController.setEnabled).toHaveBeenLastCalledWith(false);
+    expect(test.coordinator.snapshot.settings.keyboard_scroll_restore_enabled).toBe(false);
+    expect(test.coordinator.snapshot.keyboardScrollRestoreBusy).toBe(false);
+    expect(test.onError).toHaveBeenCalledWith("keyboardScrollRestore", expect.any(Error));
+
+    test.setKeyboardScrollRestoreEnabled.mockClear();
+    test.keyboardScrollController.setEnabled.mockImplementationOnce(() => false);
+    await test.coordinator.setKeyboardScrollRestoreEnabled(true);
+    expect(test.setKeyboardScrollRestoreEnabled).not.toHaveBeenCalledWith(true);
+    expect(test.coordinator.snapshot.settings.keyboard_scroll_restore_enabled).toBe(false);
   });
 });

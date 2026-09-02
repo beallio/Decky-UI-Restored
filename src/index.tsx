@@ -11,6 +11,7 @@ import {
   setFeatureEnabled,
   setHomeCarouselFixEnabled,
   setKeyboardChordFixEnabled,
+  setKeyboardScrollRestoreEnabled,
   setUpdateChannelCall,
   checkForPluginUpdateCall,
   markUpdateNotifiedCall,
@@ -20,6 +21,7 @@ import {
 import { installAchievementBarPatch } from "./achievementBar";
 import { installHomeCarouselTitleFix } from "./homeCarouselTitleFix";
 import { installKeyboardChordFix } from "./keyboardChordFix";
+import { installKeyboardScrollRestore } from "./keyboardScrollRestore";
 import { PluginPanelContent } from "./components/PluginPanelContent";
 import {
   resetDescriptionScroll,
@@ -35,6 +37,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
   feature_enabled: true,
   home_carousel_fix_enabled: false,
   keyboard_chord_fix_enabled: false,
+  keyboard_scroll_restore_enabled: false,
   debug_logging: false,
   update_channel: "stable",
   automatic_update_checks: true,
@@ -51,6 +54,7 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
     featureBusy,
     homeCarouselFixBusy,
     keyboardChordFixBusy,
+    keyboardScrollRestoreBusy,
     debugBusy,
     updateChannelBusy,
     automaticChecksBusy,
@@ -113,6 +117,10 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
     await coordinator.setKeyboardChordFixEnabled(enabled);
   };
 
+  const saveKeyboardScrollRestore = async (enabled: boolean) => {
+    await coordinator.setKeyboardScrollRestoreEnabled(enabled);
+  };
+
   const confirmInstalledPluginVersion = (version: string) => {
     setVersions((current) => ({ ...current, plugin: version }));
   };
@@ -125,6 +133,7 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
       featureBusy={featureBusy}
       homeCarouselFixBusy={homeCarouselFixBusy}
       keyboardChordFixBusy={keyboardChordFixBusy}
+      keyboardScrollRestoreBusy={keyboardScrollRestoreBusy}
       debugBusy={debugBusy}
       updateChannelBusy={updateChannelBusy}
       automaticChecksBusy={automaticChecksBusy}
@@ -132,6 +141,7 @@ function Content({ coordinator }: { coordinator: SettingsCoordinator }) {
       onFeatureChange={(enabled) => void saveFeature(enabled)}
       onHomeCarouselFixChange={(enabled) => void saveHomeCarouselFix(enabled)}
       onKeyboardChordFixChange={(enabled) => void saveKeyboardChordFix(enabled)}
+      onKeyboardScrollRestoreChange={(enabled) => void saveKeyboardScrollRestore(enabled)}
       onDebugChange={(enabled) => void saveDebug(enabled)}
       onUpdateChannelChange={(channel) => void coordinator.setUpdateChannel(channel)}
       onAutomaticChecksChange={(enabled) =>
@@ -156,15 +166,21 @@ export default definePlugin(() => {
     installKeyboardChordFix,
     (error) => log.error("plugin", "keyboard chord fix lifecycle failed", error),
   );
+  const keyboardScrollController = new FeatureController(
+    installKeyboardScrollRestore,
+    (error) => log.error("plugin", "keyboard scroll restore lifecycle failed", error),
+  );
   const coordinator = new SettingsCoordinator({
     achievementController,
     homeCarouselController,
     keyboardChordController,
+    keyboardScrollController,
     defaults: DEFAULT_SETTINGS,
     loadSettings: getSettings,
     setFeatureEnabled,
     setHomeCarouselFixEnabled,
     setKeyboardChordFixEnabled,
+    setKeyboardScrollRestoreEnabled,
     setDebugLogging,
     setUpdateChannel: setUpdateChannelCall,
     setAutomaticUpdateChecks: setAutomaticUpdateChecksCall,

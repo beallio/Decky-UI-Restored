@@ -27,6 +27,7 @@ DEFAULT_SETTINGS: Settings = {
     "feature_enabled": True,
     "home_carousel_fix_enabled": False,
     "keyboard_chord_fix_enabled": False,
+    "keyboard_scroll_restore_enabled": False,
     "debug_logging": False,
     "update_channel": "stable",
     "automatic_update_checks": True,
@@ -50,6 +51,11 @@ def _normalize_settings(value: Any) -> Settings:
         "keyboard_chord_fix_enabled": (
             data["keyboard_chord_fix_enabled"]
             if isinstance(data.get("keyboard_chord_fix_enabled"), bool)
+            else False
+        ),
+        "keyboard_scroll_restore_enabled": (
+            data["keyboard_scroll_restore_enabled"]
+            if isinstance(data.get("keyboard_scroll_restore_enabled"), bool)
             else False
         ),
         "debug_logging": (
@@ -282,6 +288,11 @@ class Plugin:
         if not isinstance(enabled, bool):
             raise TypeError("keyboard_chord_fix_enabled must be a boolean")
         return self._save_setting("keyboard_chord_fix_enabled", enabled)
+
+    async def set_keyboard_scroll_restore_enabled(self, enabled: bool) -> Settings:
+        if not isinstance(enabled, bool):
+            raise TypeError("keyboard_scroll_restore_enabled must be a boolean")
+        return self._save_setting("keyboard_scroll_restore_enabled", enabled)
 
     async def set_debug_logging(self, enabled: bool) -> Settings:
         if not isinstance(enabled, bool):

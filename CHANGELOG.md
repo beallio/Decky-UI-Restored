@@ -18,6 +18,13 @@ Release entries are curated by hand and dated. A release must not be cut against
   never mounts. The fix observes the same multicast keyboard message and re-dispatches it
   with the expected app id. Closing is left to Steam, whose toggle-close branch runs before
   the faulty check and already works.
+- Add an opt-in Keyboard Scroll Restore fix. Steam reserves room for the on-screen keyboard by
+  shrinking the content container, and the scroll position moves down by the same amount. When
+  the keyboard closes the container returns to full height but the scroll position is left
+  behind, so the view stays displaced and the offset accumulates across open/close cycles. The
+  fix records scroll positions when the keyboard appears and restores them once each container
+  is back to its previous height. It is independent of CSSLoader themes; a theme only makes the
+  displacement larger.
 
 ## [0.2.2] - 2026-08-28
 

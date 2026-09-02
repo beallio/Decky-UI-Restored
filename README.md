@@ -34,6 +34,14 @@ The optional On-Screen Keyboard Shortcut fix repairs the shortcut in Big Picture
 
 If a later Steam update repairs the shortcut, the fix stays quiet and lets Steam open the keyboard.
 
+### Keyboard scroll position
+
+Steam makes room for the on-screen keyboard by making the page shorter, and the page scrolls down by the same amount. When the keyboard closes, the page returns to its full height but stays scrolled, so the view is left too high. The offset increases each time you open and close the keyboard.
+
+The optional Keyboard Scroll Restore fix records the scroll position when the keyboard appears and puts it back when the page returns to its full height. It keeps any scroll position you set yourself before the keyboard opened.
+
+This problem is not caused by a CSSLoader theme. A theme that makes the page taller only makes the movement easier to see.
+
 ## Using the plugin
 
 Open **Quick Access → Decky → Decky UI Restored**.
@@ -43,6 +51,7 @@ The panel contains:
 - **Restore Mini Achievements** — turns the achievement progress bar on or off. It is on by default.
 - **Home Carousel Title Fix** — fixes the stuck Home carousel highlight. It is off by default.
 - **On-Screen Keyboard Shortcut** — restores STEAM + X when no game is running. It is off by default.
+- **Keyboard Scroll Restore** — puts the scroll position back after the keyboard closes. It is off by default.
 - **Settings** — includes optional debug logging for troubleshooting.
 - **Updates** — checks for new versions and lets Decky install them.
 - **Versions** — shows the installed plugin, Decky Loader, and SteamOS versions.

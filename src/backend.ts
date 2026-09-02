@@ -4,6 +4,7 @@ export type PluginSettings = {
   feature_enabled: boolean;
   home_carousel_fix_enabled: boolean;
   keyboard_chord_fix_enabled: boolean;
+  keyboard_scroll_restore_enabled: boolean;
   debug_logging: boolean;
   update_channel: UpdateChannel;
   automatic_update_checks: boolean;
@@ -78,6 +79,9 @@ export const setHomeCarouselFixEnabled = callable<[boolean], PluginSettings>(
 );
 export const setKeyboardChordFixEnabled = callable<[boolean], PluginSettings>(
   "set_keyboard_chord_fix_enabled",
+);
+export const setKeyboardScrollRestoreEnabled = callable<[boolean], PluginSettings>(
+  "set_keyboard_scroll_restore_enabled",
 );
 export const setDebugLogging = callable<[boolean], PluginSettings>(
   "set_debug_logging",

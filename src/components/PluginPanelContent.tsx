@@ -3,6 +3,7 @@ import type { PluginSettings, UpdateChannel, Versions } from "../backend";
 import { FocusablePanel } from "./FocusablePanel";
 import { HomeCarouselTitleFixSection } from "./HomeCarouselTitleFixSection";
 import { KeyboardChordFixSection } from "./KeyboardChordFixSection";
+import { KeyboardScrollRestoreSection } from "./KeyboardScrollRestoreSection";
 import { PluginUpdateSection } from "./PluginUpdateSection";
 import { RestoreMiniAchievementsSection } from "./RestoreMiniAchievementsSection";
 import { SettingsSection } from "./SettingsSection";
@@ -15,6 +16,7 @@ type Props = {
   featureBusy: boolean;
   homeCarouselFixBusy: boolean;
   keyboardChordFixBusy: boolean;
+  keyboardScrollRestoreBusy: boolean;
   debugBusy: boolean;
   updateChannelBusy: boolean;
   automaticChecksBusy: boolean;
@@ -22,6 +24,7 @@ type Props = {
   onFeatureChange: (enabled: boolean) => void;
   onHomeCarouselFixChange: (enabled: boolean) => void;
   onKeyboardChordFixChange: (enabled: boolean) => void;
+  onKeyboardScrollRestoreChange: (enabled: boolean) => void;
   onDebugChange: (enabled: boolean) => void;
   onUpdateChannelChange: (channel: UpdateChannel) => void;
   onAutomaticChecksChange: (enabled: boolean) => void;
@@ -49,6 +52,12 @@ export function PluginPanelContent(props: Props) {
         settingsLoaded={props.settingsLoaded}
         busy={props.keyboardChordFixBusy}
         onChange={props.onKeyboardChordFixChange}
+      />
+      <KeyboardScrollRestoreSection
+        enabled={props.settings.keyboard_scroll_restore_enabled}
+        settingsLoaded={props.settingsLoaded}
+        busy={props.keyboardScrollRestoreBusy}
+        onChange={props.onKeyboardScrollRestoreChange}
       />
       <SettingsSection
         debugLogging={props.settings.debug_logging}

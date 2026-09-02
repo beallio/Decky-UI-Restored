@@ -38,6 +38,7 @@ import { FocusablePanel } from "./FocusablePanel";
 import { RestoreMiniAchievementsSection } from "./RestoreMiniAchievementsSection";
 import { HomeCarouselTitleFixSection } from "./HomeCarouselTitleFixSection";
 import { KeyboardChordFixSection } from "./KeyboardChordFixSection";
+import { KeyboardScrollRestoreSection } from "./KeyboardScrollRestoreSection";
 import { SettingsSection } from "./SettingsSection";
 import { VersionsSection } from "./VersionsSection";
 import { PluginUpdateSection } from "./PluginUpdateSection";
@@ -337,6 +338,7 @@ describe("focusable QAM sections", () => {
         feature_enabled: true,
         home_carousel_fix_enabled: false,
         keyboard_chord_fix_enabled: false,
+        keyboard_scroll_restore_enabled: false,
         debug_logging: false,
         update_channel: "stable",
         automatic_update_checks: true,
@@ -345,6 +347,7 @@ describe("focusable QAM sections", () => {
       featureBusy: false,
       homeCarouselFixBusy: false,
       keyboardChordFixBusy: false,
+      keyboardScrollRestoreBusy: false,
       debugBusy: false,
       updateChannelBusy: false,
       automaticChecksBusy: false,
@@ -352,6 +355,7 @@ describe("focusable QAM sections", () => {
       onFeatureChange: vi.fn(),
       onHomeCarouselFixChange: vi.fn(),
       onKeyboardChordFixChange: vi.fn(),
+      onKeyboardScrollRestoreChange: vi.fn(),
       onDebugChange: vi.fn(),
       onUpdateChannelChange: vi.fn(),
       onAutomaticChecksChange: vi.fn(),
@@ -361,6 +365,7 @@ describe("focusable QAM sections", () => {
       RestoreMiniAchievementsSection,
       HomeCarouselTitleFixSection,
       KeyboardChordFixSection,
+      KeyboardScrollRestoreSection,
       SettingsSection,
       PluginUpdateSection,
       VersionsSection,

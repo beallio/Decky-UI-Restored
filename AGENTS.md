@@ -88,6 +88,20 @@ shipped mechanism).
   before the faulty appid check. Only opening needs repair — sample the keyboard
   state when the message arrives and leave an already-open keyboard to Steam.
 
+- The optional keyboard scroll restore (`src/keyboardScrollRestore.ts`) repairs a
+  separate Steam defect: reserving room for the keyboard shrinks the content
+  container (534px -> 295px for a 239px keyboard) and scroll position moves down by
+  the same amount, but closing restores the height and leaves `scrollTop` behind,
+  so the offset accumulates. `IsShowingVirtualKeyboard` fires *before* the animated
+  resize starts, so values read synchronously on show are the pristine
+  pre-keyboard ones; on hide, poll until each container returns to its recorded
+  `clientHeight`, then restore the recorded `scrollTop`. That height check is what
+  keeps it from fighting scrolling the user did themselves.
+- The two keyboard fixes are independent toggles. The scroll defect applies to any
+  keyboard open/close cycle, including a text field with the chord fix off, and it
+  reproduces with every CSSLoader style tag disabled — a theme only enlarges the
+  displacement.
+
 ## Orchestration
 
 - `scripts/orchestration` symlinks the shared engine (`../../agent-orchestration`).
@@ -105,8 +119,9 @@ shipped mechanism).
   the Steam UI (wrap in try/catch, log, no-op on failure).
 - Persistent settings live in Decky's plugin settings directory and default to
   achievement restoration enabled, the Home carousel title fix disabled, the
-  on-screen keyboard chord fix disabled, verbose diagnostics disabled, the stable
-  update channel, and automatic update checks enabled.
+  on-screen keyboard chord fix disabled, keyboard scroll restore disabled, verbose
+  diagnostics disabled, the stable update channel, and automatic update checks
+  enabled.
 - Disabling restoration must clean injected props from mounted instances, not
   only remove route/prototype patches.
 - Report the installed plugin version from the packaged manifest; resolve Decky
