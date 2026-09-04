@@ -10,6 +10,15 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-04
+
+Updates transitive development dependencies to resolve reported high-severity advisories.
+
+### Security
+
+- Update `fast-uri` from 3.1.4 to 3.1.6, resolving five GitHub Dependabot alerts.
+- Update `nanoid` from 3.3.16 to 3.3.18, resolving the remaining high-severity npm advisory.
+
 ## [0.2.2] - 2026-08-28
 
 Refreshes the Desktop installer branding and plugin icon while preserving update compatibility.
