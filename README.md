@@ -18,6 +18,9 @@ The bar still follows Steam's normal rules. It stays hidden when Steam has no ac
 
 ### Home carousel title
 
+> [!IMPORTANT]
+> Steam fixed this issue with the 2026-09-01 release.
+
 The first game in the Home carousel can sometimes stay highlighted after controller focus moves to another game. Its old title, glow, and raised tile can remain on screen.
 
 The optional Home Carousel Title Fix clears that stuck state while you move through the carousel. It keeps the appearance chosen by Steam and your other CSSLoader themes.
