@@ -8,7 +8,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release entries are curated by hand and dated. A release must not be cut against an
 `[Unreleased]` heading — roll it over to the version being released first.
 
-## [Unreleased]
+## [0.2.4] - 2026-09-22
+
+Updates the frontend test toolchain to resolve a moderate-severity file disclosure advisory.
+
+### Security
+
+- Update `vitest` and `@vitest/mocker` from 4.1.10 to 4.1.11, preventing path traversal
+  and arbitrary file reads through redirect mocks (GHSA-82fw-gwwq-j7x9).
 
 ## [0.2.3] - 2026-09-04
 

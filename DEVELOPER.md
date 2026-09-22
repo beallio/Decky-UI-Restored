@@ -203,6 +203,6 @@ bounded `fcntl.flock` plus atomic replace writes.
 - `installer/` — specialized Desktop installer sources and bundle.
 - `.github/workflows/` — CI, rolling and immutable development release, and stable release jobs.
 - `scripts/` — build/package/release helpers and the orchestration symlink.
-- `docs/` — plans, specifications, reviews, and runbooks.
+- `docs/` — durable technical documentation and operational runbooks, not generated process records.
 - `research/` — ignored reverse-engineering scratch; only curated reports and
   diffs are intended to persist.
