@@ -8,7 +8,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Release entries are curated by hand and dated. A release must not be cut against an
 `[Unreleased]` heading — roll it over to the version being released first.
 
-## [0.2.4] - 2026-09-22
+## [Unreleased]
 
 Updates the frontend test toolchain to resolve a moderate-severity file disclosure advisory.
 
