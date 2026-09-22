@@ -1,6 +1,6 @@
 # Decky UI Restored
 
-[![License](https://img.shields.io/github/license/beallio/Decky-UI-Restored)](LICENSE)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/beallio/Decky-UI-Restored?display_name=tag)](https://github.com/beallio/Decky-UI-Restored/releases/latest)
 [![CI](https://github.com/beallio/Decky-UI-Restored/actions/workflows/ci.yml/badge.svg)](https://github.com/beallio/Decky-UI-Restored/actions/workflows/ci.yml)
 
