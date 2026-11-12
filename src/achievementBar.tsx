@@ -313,10 +313,18 @@ export function installAchievementBarPatch(): () => void {
   let routePatch: RoutePatch | undefined;
   let routeRenderOwner: unknown;
   let routeRenderPatch: { unpatch: () => void } | undefined;
+  let attachmentTimer: ReturnType<typeof setInterval> | undefined;
   const cacheTimers = new Set<ReturnType<typeof setTimeout>>();
   const attemptedAppIds = new Set<number>();
 
+  const stopAttachmentWatch = (): void => {
+    if (attachmentTimer === undefined) return;
+    clearInterval(attachmentTimer);
+    attachmentTimer = undefined;
+  };
+
   const removeRow = (): void => {
+    stopAttachmentWatch();
     try {
       parts?.row.remove();
     } catch {
@@ -361,6 +369,21 @@ export function installAchievementBarPatch(): () => void {
       observer = undefined;
       observedSection = undefined;
     }
+  };
+
+  const watchAttachment = (): void => {
+    if (attachmentTimer !== undefined || disposed) return;
+    // The whole PlayBar can be detached without notifying an observer inside it.
+    // One cheap connectivity check releases the old page after navigation.
+    attachmentTimer = setInterval(() => {
+      if (!parts) {
+        stopAttachmentWatch();
+        return;
+      }
+      if (parts.row.isConnected) return;
+      removeRow();
+      disconnectObserver();
+    }, 1_000);
   };
 
   const setTimer = (callback: () => void, delay: number): void => {
@@ -466,6 +489,7 @@ export function installAchievementBarPatch(): () => void {
       const width = `${Math.round(totals.percentage)}%`;
       if (rowParts.count.textContent !== countText) rowParts.count.textContent = countText;
       if (rowParts.fill.style.width !== width) rowParts.fill.style.width = width;
+      watchAttachment();
     } catch (error) {
       removeRow();
       disconnectObserver();

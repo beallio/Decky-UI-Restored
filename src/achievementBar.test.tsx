@@ -157,6 +157,7 @@ const mountSection = (
   appId = APP_ID,
   overrides: Record<string, unknown> = {},
   detailsAppId?: number,
+  parent: HTMLElement = document.body,
 ) => {
   const section = document.createElement("div");
   section.className = classes.GameStatsSection;
@@ -166,7 +167,7 @@ const mountSection = (
   const playtime = document.createElement("div");
   playtime.className = `${classes.GameStat} ${classes.Playtime}`;
   section.append(lastPlayed, playtime);
-  document.body.append(section);
+  parent.append(section);
   const props: Record<string, unknown> = {
     overview: { appid: appId, installed: true, app_type: 1, ...overrides },
   };
@@ -555,6 +556,25 @@ describe("achievement stat row", () => {
     onAchievementChange?.();
     vi.advanceTimersByTime(0);
     expect(document.querySelector(`.${ROW_CLASS}`)).toBeNull();
+  });
+
+  it("removes the row when the whole PlayBar is detached without an event", () => {
+    installCache(progress(80, 179, 44.7));
+    const playBar = document.createElement("div");
+    playBar.className = classes.PlayBar;
+    document.body.append(playBar);
+    const { section } = mountSection(APP_ID, {}, undefined, playBar);
+
+    dispose = install();
+    vi.advanceTimersByTime(1_100);
+    const inserted = row(section);
+    expect(inserted).not.toBeNull();
+
+    playBar.remove();
+    expect(inserted?.isConnected).toBe(false);
+    vi.advanceTimersByTime(1_000);
+
+    expect(section.querySelector(`.${ROW_CLASS}`)).toBeNull();
   });
 
   it("retries after a route render when the page's stats section commits late", () => {
