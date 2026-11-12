@@ -8,22 +8,20 @@ failed patch must log and stop without crashing Steam UI.
 
 ### Mini achievements
 
-Valve's `MiniAchievements` component still ships with its native CSS and live
-`GetAchievements(appid)` data. Steam changelist 10546225 added this render guard:
+Steam's November 2026 client removed the native `MiniAchievements` bar. The
+earlier `onSeek` render patch can no longer restore it. `src/achievementBar.tsx`
+now adds an owned stat row beside Play Time, using Steam's
+`appAchievementProgressCache` and the native PlayBar CSS module.
 
-```js
-if (!this.props.onSeek) return null;
-```
-
-The Steam Deck game-details `PlayBar` supplies `onSeek: undefined`, so the
-component remains mounted but emits no DOM. `src/achievementBar.tsx` captures the
-class read-only from the Big Picture React fiber tree, patches its own `render`
-method, supplies a real section-seek handler, and refreshes mounted instances.
-It does not remount the app-details tree or reimplement the progress bar.
+Read the game identity from the mounted stats section's React ancestors. Ask
+Steam to fill cold cache entries and retry reads for a bounded period. Refresh
+after route commits and achievement changes, and remove the row, observers,
+timers, subscriptions, and route hooks on disable or unload.
 
 Keep Valve's guards for missing achievement totals and zero-progress
-uninstalled games. The live-verified root cause, Steam build constraints, and
-failed approaches are documented in
+uninstalled games. Do not show a second row when the native bar is present.
+The current mechanism, upstream Metadata references, and historical native
+patch are documented in
 [`docs/deep-patch-notes.md`](docs/deep-patch-notes.md).
 
 ### Home carousel title

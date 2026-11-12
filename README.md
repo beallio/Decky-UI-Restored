@@ -10,11 +10,11 @@ Decky UI Restored is a Decky Loader plugin that fixes Steam Deck interface probl
 
 ### Mini achievements
 
-Steam stopped showing the small achievement progress bar beside Play Time on game details pages. Decky UI Restored brings that bar back by using Steam's own achievement display and live progress data.
+Steam stopped showing the small achievement progress bar beside Play Time on game details pages, and a later update removed the bar entirely. Decky UI Restored shows the same small progress row again, filled from Steam's own achievement progress.
 
 ![Restored achievement bar](assets/achievement-bar-restored.png)
 
-The bar still follows Steam's normal rules. It stays hidden when Steam has no achievement total, and it does not invent progress for games with missing data.
+The row still follows Steam's normal rules. It stays hidden when Steam has no achievement total, and it does not invent progress for games with missing data.
 
 ### Home carousel title
 

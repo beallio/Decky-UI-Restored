@@ -93,7 +93,8 @@ export function RestoreMiniAchievementsSection({
         >
           <div style={{ fontSize: "0.8rem", opacity: 0.8 }}>
             Restores the achievement progress bar on the game details page (next
-            to Play Time). Open a game that has achievements to see it.
+            to Play Time) using Steam's achievement data. Open a game that has
+            achievements to see it.
           </div>
         </Field>
       </PanelSectionRow>

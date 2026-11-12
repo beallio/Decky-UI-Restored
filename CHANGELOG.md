@@ -10,7 +10,21 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
-Updates the frontend test toolchain to resolve a moderate-severity file disclosure advisory.
+## [0.2.4] - 2026-11-12
+
+Restores the mini achievement progress row on the November 2026 Steam client and updates
+the frontend test toolchain.
+
+### Fixed
+
+- Restore the achievement progress row beside Play Time after Steam removed its native
+  `MiniAchievements` component. The plugin draws the row in Steam's PlayBar layout from
+  Steam's achievement progress cache, keeps it hidden when totals are unavailable or an
+  uninstalled game has no unlocked achievements, and does not duplicate a native row
+  ([#14](https://github.com/beallio/Decky-UI-Restored/issues/14)).
+- Poll Steam's achievement progress cache on a bounded retry schedule after requesting an
+  update, so a response that arrives late still appears without navigating away. Ported
+  from the Decky Metadata fix (`fab5c51`, `6e4d8ac`).
 
 ### Security
 

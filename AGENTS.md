@@ -5,14 +5,15 @@ Guidance for coding agents working in this repo. Keep it current.
 ## What this is
 
 Decky UI Restored is a Decky Loader plugin for independent, reversible Steam UI
-regression fixes. It currently restores Valve's native `MiniAchievements`
-component and removes stale Home carousel hover state without overriding theme
-styles. Do not reimplement Valve UI when a stable native component or state
-repair is available.
+regression fixes. It currently restores the mini achievement progress row in the
+game-details PlayBar and removes stale Home carousel hover state without
+overriding theme styles. The November 2026 Steam client removed Valve's native
+`MiniAchievements` component, so the plugin now owns that row; do not reimplement
+other Valve UI when a stable native component or state repair is available.
 
-Authoritative mini-achievement background: `docs/deep-patch-notes.md` (root
-cause, one-line guard diff, live runtime constraints, failed approaches, and the
-shipped mechanism).
+Authoritative mini-achievement background: `docs/deep-patch-notes.md` (November
+2026 root cause, current cache-backed row, historical pre-November `onSeek` work,
+live runtime constraints, and failed approaches).
 
 ## Environment & scratch
 
@@ -38,31 +39,44 @@ shipped mechanism).
   `webpackChunksteamui` / `SP_REACT` / stores live in **SharedJSContext**.
 - Require capture: `webpackChunksteamui.push([[k],{},r=>R=r])`; use `R.m` +
   `R(id)` (the `R.c` cache reads empty via that handle).
-- Achievements store: `R(78057).H.GetAchievements(appid)` → `{nTotal,nAchieved,…}`
-  (id is build-specific — resolve by signature, not hardcode).
-- Uninstalled-game achievement data is usually absent from that store. A live
-  2026-07-26 probe found cached totals for only 4 of 58 uninstalled Steam games;
-  keep Valve's `!nTotal` guard and never fabricate progress when data is missing.
-- Preserve Valve's intended install guard:
-  `!overview.installed && nAchieved == 0` hides zero-progress uninstalled games,
-  while uninstalled games with earned progress may render when data is available.
-  The plugin remedies only the later `!onSeek` guard.
-- `afterPatch(MiniAchievements.prototype, "render", …)` works on the current
-  build. Supply `onSeek` through a persistent instance `props` getter, then
-  schedule `forceUpdate()` out of band so React commits Valve's component.
-- Capture the class read-only from SharedJSContext through `g_PopupManager` →
-  Big Picture document → React fiber DFS, matching the whole class source by
-  `onSeek("achievements")`.
-- Defer capture until after the app-details route commits, then refresh captured
-  `MiniAchievements` instances; synchronous route-render capture sees the old tree.
+- Achievement progress is published on `globalThis.appAchievementProgressCache`:
+  `BGameHasAchievements(appid)` and
+  `m_achievementProgress.mapCache.get(appid)` → `{unlocked,total,percentage}`.
+  Validate finite, sane integer totals (`total > 0`) and never log raw cache
+  payloads or other private Steam data.
+- Call `QueueCacheUpdate(appid)` at most once per app, then reread the cache on
+  a bounded retry schedule while totals are missing. Steam fills a cold entry
+  from an RPC that can answer after the first read, and no DOM mutation signals it.
+- Draw the row as plugin-owned DOM after the PlayBar `.Playtime` node using the
+  CSS module whose exports include `GameStat` and `Playtime`, so it inherits
+  Steam's stat layout. Resolve that module by export-key signature, never by
+  module ID or hashed classname.
+- Resolve the Big Picture document through the shared `getBigPictureDocument`
+  helper, then read the app id from a bounded walk of parent React fiber props
+  carrying `overview.appid` or `details.unAppID`.
+- A live 2026-07-26 probe found cached totals for only 4 of 58 uninstalled Steam
+  games. Keep the row hidden when totals are missing and when
+  `!overview.installed && unlocked === 0`; uninstalled games with earned progress
+  may render once data is available. Never fabricate progress. Skip non-Steam
+  shortcuts.
+- If Steam still renders a native `.MiniAchievements` row (older or flag-enabled
+  clients), remove the plugin row and leave the native one alone.
+- Subscribe to `SteamClient.Apps.RegisterForAchievementChanges` and observe the
+  PlayBar subtree so unlocks and layout replacement refresh or reattach the row.
 - `routerHook.addPatch()` transforms the route table; its callback is not a
-  navigation/render event and cannot drive later capture retries by itself.
-- Use an untouched `children.props.renderFunc` after-patch only as the per-render
-  signal, then defer capture and retry briefly until the Big Picture commit is visible.
+  navigation/render event. Use an untouched `children.props.renderFunc`
+  after-patch only as a per-render signal to schedule a deferred, bounded
+  capture burst.
+- Do not patch a `MiniAchievements` prototype or supply `onSeek` on current
+  clients; that class is gone. Historical pre-November behavior is documented in
+  `docs/deep-patch-notes.md`.
 - Never tree-descend or use `wrapReactClass` for this patch: wrapping remounts
   app-details components, exposes the store-tabs variant, and breaks the play-row
   gradient.
-- Match components by stable signatures, not minified locals or hashed
+- `getBigPictureDocument` and `steamGlobals` from `src/achievementBar.tsx` are
+  shared exports: `homeCarouselTitleFix.ts` imports them and
+  `homeCarouselTitleFix.test.ts` mocks them. Keep those contracts stable.
+- Match Steam internals by stable signatures, not minified locals or hashed
   classnames — those churn every Steam update.
 - The optional Home-carousel fix resolves CSS modules by export-key signatures,
   never by module ID or CSS hash. Its three target roles are
@@ -93,8 +107,9 @@ shipped mechanism).
   achievement restoration enabled, the Home carousel title fix disabled,
   verbose diagnostics disabled, the stable update channel, and automatic update
   checks enabled.
-- Disabling restoration must clean injected props from mounted instances, not
-  only remove route/prototype patches.
+- Disabling restoration must remove the injected row and disconnect its
+  observer, timers, achievement listener, and route/render patches; unmounting
+  alone is not cleanup.
 - Report the installed plugin version from the packaged manifest; resolve Decky
   and SteamOS versions from the runtime and `/etc/os-release`.
 - Keep every setting and each version row independently gamepad-focusable.
