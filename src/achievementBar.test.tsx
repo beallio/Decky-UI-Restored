@@ -1,23 +1,42 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+// @vitest-environment happy-dom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Mock } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   addPatch: vi.fn(),
   removePatch: vi.fn(),
   afterPatch: vi.fn(),
+  findClassModule: vi.fn(),
+  findInReactTree: vi.fn(),
+  navigate: vi.fn(),
   debug: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
 }));
 
-vi.mock("@decky/api", () => ({
-  routerHook: {
-    addPatch: mocks.addPatch,
-    removePatch: mocks.removePatch,
-  },
-}));
+const classes = {
+  GameStat: "game-stat",
+  GameStatsSection: "stats-section",
+  Playtime: "playtime",
+  GameStatIcon: "stat-icon",
+  GameStatRight: "stat-right",
+  PlayBar: "play-bar",
+  MiniAchievements: "mini-achievements",
+  AchievementProgressRow: "progress-row",
+  AchievementCountLabel: "achievement-count",
+  PlayBarLabel: "bar-label",
+  PlayBarDetailLabel: "bar-detail",
+};
 
 vi.mock("@decky/ui", () => ({
   afterPatch: mocks.afterPatch,
+  findClassModule: mocks.findClassModule,
+  findInReactTree: mocks.findInReactTree,
+  Navigation: { Navigate: mocks.navigate },
+}));
+
+vi.mock("@decky/api", () => ({
+  routerHook: { addPatch: mocks.addPatch, removePatch: mocks.removePatch },
 }));
 
 vi.mock("./log", () => ({
@@ -26,862 +45,620 @@ vi.mock("./log", () => ({
   warn: mocks.warn,
 }));
 
-import {
-  captureMiniAchievements,
-  findAncestorStateNode,
-  findClassInFiberTree,
-  getBigPictureDocument,
-  hasAchievementRenderSignature,
-  installAchievementBarPatch,
-  patchMiniAchievementsRender,
-  restoreInstance,
-  resolveSeekController,
-  steamGlobals,
-  withOnSeek,
-} from "./achievementBar";
+import { getBigPictureDocument, installAchievementBarPatch, steamGlobals } from "./achievementBar";
 
+const APP_ID = 1942280;
+const SECOND_APP_ID = 1145360;
+const ROW_CLASS = "decky-steamachievements-mini-achievements";
 const APP_ROUTE = "/library/app/:appid";
 
-function MiniAchievementsSignatureDouble() {
-  if (false) ({ onSeek: (_section: string) => undefined }).onSeek("achievements");
-}
-
-function routeCallback(): (props: unknown) => unknown {
-  return mocks.addPatch.mock.calls[0][1];
-}
-
-function fiberElement(fiber: object): object {
-  return { "__reactFiber$test": fiber };
-}
-
-function popup(document: object, title = ""): object {
-  return {
-    m_strTitle: title,
-    m_popup: { document },
-  };
-}
-
-function installMethodPatchMock(): Array<{
-  target: any;
+type PatchRecord = {
+  target: { [key: string]: unknown };
   method: string;
-  unpatch: ReturnType<typeof vi.fn>;
-}> {
-  const patches: Array<{
-    target: any;
-    method: string;
-    unpatch: ReturnType<typeof vi.fn>;
-  }> = [];
+  unpatch: Mock;
+};
 
-  mocks.afterPatch.mockImplementation((target, method, handler) => {
-    const original = target?.[method];
-    if (typeof original === "function") {
-      target[method] = function (this: any, ...args: any[]) {
-        const result = original.apply(this, args);
-        return handler.call(this, args, result);
-      };
-    }
+type RouteRecord = {
+  route: string;
+  callback: (tree: unknown) => unknown;
+};
 
-    const unpatch = vi.fn(() => {
-      if (typeof original === "function") target[method] = original;
-    });
-    patches.push({ target, method, unpatch });
-    return { unpatch };
+let patchRecords: PatchRecord[] = [];
+let routeRecords: RouteRecord[] = [];
+let onAchievementChange: ((appId?: unknown) => void) | undefined;
+let registerAchievements: Mock;
+let unregisterAchievements: Mock;
+let dispose: (() => void) | undefined;
+
+const popup = (document: unknown, title = "Steam Big Picture Mode") => ({
+  m_strTitle: title,
+  m_popup: { document },
+});
+
+const popupManager = (document: unknown) => ({
+  m_rgPopups: new Map([["bpm", popup(document)]]),
+});
+
+const progress = (unlocked: number, total: number, percentage: number | undefined) => ({
+  appid: APP_ID,
+  unlocked,
+  total,
+  percentage,
+});
+
+const installCache = (entry?: unknown, appId = APP_ID) => {
+  const mapCache = new Map<number, unknown>();
+  if (entry !== undefined) mapCache.set(appId, entry);
+  const hasAchievements = vi.fn((): boolean => true);
+  const queueUpdate = vi.fn();
+  Object.defineProperty(globalThis, "appAchievementProgressCache", {
+    configurable: true,
+    value: {
+      BGameHasAchievements: hasAchievements,
+      QueueCacheUpdate: queueUpdate,
+      m_achievementProgress: { mapCache },
+    },
   });
+  return { mapCache, hasAchievements, queueUpdate };
+};
 
-  return patches;
-}
-
-describe("hasAchievementRenderSignature", () => {
-  it("matches double- and single-quoted achievement seek signatures", () => {
-    function singleQuotedSignature() {
-      if (false) ({ onSeek: (_section: string) => undefined }).onSeek('achievements');
-    }
-
-    expect(hasAchievementRenderSignature(MiniAchievementsSignatureDouble)).toBe(true);
-    expect(hasAchievementRenderSignature(singleQuotedSignature)).toBe(true);
+const installSteamClient = () => {
+  registerAchievements = vi.fn((listener: (appId?: unknown) => void) => {
+    onAchievementChange = listener;
+    return unregisterAchievements;
   });
+  Object.defineProperty(globalThis, "SteamClient", {
+    configurable: true,
+    value: { Apps: { RegisterForAchievementChanges: registerAchievements } },
+  });
+};
 
-  it.each([null, undefined, {}, "component", 42])(
-    "rejects non-function value %s",
-    (candidate) => {
-      expect(hasAchievementRenderSignature(candidate)).toBe(false);
+const findNode = (node: unknown, filter: (candidate: unknown) => unknown): unknown => {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findNode(child, filter);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (!node || typeof node !== "object") return undefined;
+  if (filter(node)) return node;
+  for (const key of ["props", "children", "child", "sibling"]) {
+    const found = findNode(Reflect.get(node, key), filter);
+    if (found) return found;
+  }
+  return undefined;
+};
+
+const installPatcher = () => {
+  mocks.afterPatch.mockImplementation(
+    (
+      target: { [key: string]: unknown },
+      method: string,
+      handler: (this: unknown, args: unknown[], result: unknown) => unknown,
+    ) => {
+      const original = target[method];
+      if (typeof original === "function") {
+        target[method] = function (this: unknown, ...args: unknown[]) {
+          const result = original.apply(this, args);
+          return handler.call(this, args, result);
+        };
+      }
+      const unpatch = vi.fn(() => {
+        if (typeof original === "function") target[method] = original;
+      });
+      patchRecords.push({ target, method, unpatch });
+      return { unpatch };
     },
   );
+};
 
-  it("rejects unrelated functions and throwing stringification", () => {
-    function Unrelated() {
-      return null;
-    }
-    const throwing = new Proxy(function Component() {}, {
-      get(target, property, receiver) {
-        if (property === "toString") throw new Error("source unavailable");
-        return Reflect.get(target, property, receiver);
-      },
-    });
+const mountSection = (
+  appId = APP_ID,
+  overrides: Record<string, unknown> = {},
+  detailsAppId?: number,
+) => {
+  const section = document.createElement("div");
+  section.className = classes.GameStatsSection;
+  const lastPlayed = document.createElement("div");
+  lastPlayed.className = classes.GameStat;
+  lastPlayed.textContent = "Last Played";
+  const playtime = document.createElement("div");
+  playtime.className = `${classes.GameStat} ${classes.Playtime}`;
+  section.append(lastPlayed, playtime);
+  document.body.append(section);
+  const props: Record<string, unknown> = {
+    overview: { appid: appId, installed: true, app_type: 1, ...overrides },
+  };
+  if (detailsAppId) props.details = { unAppID: detailsAppId };
+  Reflect.set(section, "__reactFiber$test", { memoizedProps: props, return: null });
+  return { lastPlayed, playtime, section };
+};
 
-    expect(hasAchievementRenderSignature(Unrelated)).toBe(false);
-    expect(() => hasAchievementRenderSignature(throwing)).not.toThrow();
-    expect(hasAchievementRenderSignature(throwing)).toBe(false);
-  });
-});
+const install = () => {
+  const nextDispose = installAchievementBarPatch();
+  vi.advanceTimersByTime(0);
+  return nextDispose;
+};
 
-describe("withOnSeek", () => {
-  const handler = vi.fn();
+const row = (root: ParentNode = document): HTMLElement | null =>
+  root.querySelector(`.${ROW_CLASS}`);
 
-  it.each([
-    {},
-    { onSeek: undefined },
-    { onSeek: null },
-  ])("adds the handler when onSeek is absent or nullish", (props) => {
-    const result = withOnSeek(props, handler);
+const countText = (element: Element) =>
+  element.querySelector(`.${classes.AchievementCountLabel}`)?.textContent ?? "";
 
-    expect(result).not.toBe(props);
-    expect(result).toEqual({ ...props, onSeek: handler });
-  });
+const fillWidth = (element: Element) =>
+  Array.from(element.querySelectorAll<HTMLDivElement>("div")).find(
+    (child) => child.style.height === "100%",
+  )?.style.width;
 
-  it("leaves an existing handler and object untouched", () => {
-    const existing = vi.fn();
-    const props = { onSeek: existing, other: true };
+const applyRoute = (owner: object) => {
+  const callback = routeRecords[0]?.callback;
+  return callback?.({ props: owner });
+};
 
-    expect(withOnSeek(props, handler)).toBe(props);
-    expect(props.onSeek).toBe(existing);
-  });
+const invalidProgressEntries: Array<[string, unknown]> = [
+  ["a zero total", progress(0, 0, 0)],
+  ["a fractional total", progress(0, 1.5, 0)],
+  ["a non-numeric total", { appid: APP_ID, unlocked: 1, total: "many", percentage: 0 }],
+  ["a missing total", { appid: APP_ID, unlocked: 1, percentage: 0 }],
+  ["more unlocked than total", progress(5, 4, 100)],
+];
 
-  it.each([null, undefined, "props", 10, true, () => undefined])(
-    "passes through non-object props %s",
-    (props) => {
-      expect(withOnSeek(props, handler)).toBe(props);
-    },
+const nonSteamOverrides: Array<[string, Record<string, unknown>]> = [
+  ["a non-Steam app type", { app_type: 1073741824 }],
+  ["an explicit shortcut flag", { BIsShortcut: () => true }],
+];
+
+const routeRenderPatches = (owner: object) =>
+  patchRecords.filter((record) => record.target === owner && record.method === "renderFunc");
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.clearAllMocks();
+  document.body.innerHTML = "";
+  Reflect.deleteProperty(globalThis, "SteamClient");
+  Reflect.deleteProperty(globalThis, "appAchievementProgressCache");
+  patchRecords = [];
+  routeRecords = [];
+  onAchievementChange = undefined;
+  unregisterAchievements = vi.fn();
+  Reflect.set(document.body, "__reactFiber$test", { memoizedProps: {}, return: null });
+
+  mocks.findClassModule.mockImplementation((filter: (module: unknown) => boolean) =>
+    filter(classes) ? classes : undefined,
   );
-
-  it("never throws when props access fails", () => {
-    const props = new Proxy(
-      {},
-      {
-        get() {
-          throw new Error("props unavailable");
-        },
-      },
-    );
-
-    expect(() => withOnSeek(props, handler)).not.toThrow();
-    expect(withOnSeek(props, handler)).toBe(props);
+  mocks.findInReactTree.mockImplementation(findNode);
+  installPatcher();
+  mocks.addPatch.mockImplementation((route: string, callback: RouteRecord["callback"]) => {
+    const record = { route, callback };
+    routeRecords.push(record);
+    return record;
   });
+  mocks.removePatch.mockImplementation((_route: string, record: RouteRecord) => {
+    routeRecords = routeRecords.filter((candidate) => candidate !== record);
+  });
+  vi.spyOn(steamGlobals, "getPopupManager").mockReturnValue(popupManager(document));
+  installSteamClient();
 });
 
-describe("findAncestorStateNode", () => {
-  it("returns the nearest matching state node", () => {
-    const controller = { SeekToSection: vi.fn() };
-    const fiber = {
-      stateNode: {},
-      return: {
-        stateNode: controller,
-        return: { stateNode: { SeekToSection: vi.fn() } },
-      },
-    };
-
-    expect(
-      findAncestorStateNode(
-        fiber,
-        (stateNode) => typeof stateNode?.SeekToSection === "function",
-      ),
-    ).toBe(controller);
-  });
-
-  it("returns undefined when absent or beyond the supplied bound", () => {
-    const controller = { SeekToSection: vi.fn() };
-    const fiber = {
-      return: {
-        return: {
-          stateNode: controller,
-        },
-      },
-    };
-
-    expect(findAncestorStateNode(fiber, () => false)).toBeUndefined();
-    expect(
-      findAncestorStateNode(
-        fiber,
-        (stateNode) => stateNode === controller,
-        2,
-      ),
-    ).toBeUndefined();
-    expect(findAncestorStateNode({}, () => true)).toBeUndefined();
-  });
-
-  it("fails closed when fiber access or the predicate throws", () => {
-    const fiber = Object.defineProperty({}, "stateNode", {
-      get: () => {
-        throw new Error("fiber unavailable");
-      },
-    });
-
-    expect(() => findAncestorStateNode(fiber, () => true)).not.toThrow();
-    expect(findAncestorStateNode(fiber, () => true)).toBeUndefined();
-    expect(findAncestorStateNode({ stateNode: {} }, () => {
-      throw new Error("bad predicate");
-    })).toBeUndefined();
-  });
-});
-
-describe("findClassInFiberTree", () => {
-  it("finds a deeply nested matching elementType", () => {
-    const root = {
-      child: {
-        type: function Other() {},
-        child: {
-          elementType: MiniAchievementsSignatureDouble,
-        },
-      },
-    };
-
-    expect(findClassInFiberTree(root, hasAchievementRenderSignature)).toBe(
-      MiniAchievementsSignatureDouble,
-    );
-  });
-
-  it("walks siblings and respects the node bound", () => {
-    const root = {
-      type: function First() {},
-      sibling: {
-        type: MiniAchievementsSignatureDouble,
-      },
-    };
-
-    expect(findClassInFiberTree(root, hasAchievementRenderSignature, 1)).toBeUndefined();
-    expect(findClassInFiberTree(root, hasAchievementRenderSignature, 2)).toBe(
-      MiniAchievementsSignatureDouble,
-    );
-  });
-
-  it("returns undefined when absent or malformed", () => {
-    expect(findClassInFiberTree({ child: {} }, hasAchievementRenderSignature)).toBeUndefined();
-    expect(findClassInFiberTree(null, hasAchievementRenderSignature)).toBeUndefined();
-    expect(() =>
-      findClassInFiberTree(
-        Object.defineProperty({}, "type", {
-          get: () => {
-            throw new Error("fiber unavailable");
-          },
-        }),
-        hasAchievementRenderSignature,
-      ),
-    ).not.toThrow();
-  });
+afterEach(() => {
+  dispose?.();
+  dispose = undefined;
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  Reflect.deleteProperty(globalThis, "SteamClient");
+  Reflect.deleteProperty(globalThis, "appAchievementProgressCache");
 });
 
 describe("getBigPictureDocument", () => {
-  it("prefers the BPM document in a popup Map", () => {
-    const fallbackDocument = { body: fiberElement({}) };
-    const bpmDocument = { body: fiberElement({}) };
+  const documentWithFiber = (title: string) => {
+    const created = document.implementation.createHTMLDocument(title);
+    Reflect.set(created.body, "__reactFiber$test", { memoizedProps: {}, return: null });
+    return created;
+  };
+
+  it("prefers the Big Picture popup over other popups", () => {
+    const fallback = documentWithFiber("Overlay");
+    const bpm = documentWithFiber("Big Picture");
     const manager = {
       m_rgPopups: new Map([
-        ["fallback", popup(fallbackDocument, "Overlay")],
-        ["bpm", popup(bpmDocument, "Steam Big Picture Mode")],
+        ["fallback", popup(fallback, "Overlay")],
+        ["bpm", popup(bpm, "Steam Big Picture Mode")],
       ]),
     };
 
-    expect(getBigPictureDocument(manager)).toBe(bpmDocument);
+    expect(getBigPictureDocument(manager)).toBe(bpm);
   });
 
-  it("supports GetPopups arrays and falls back to any fiber document", () => {
-    const document = { body: fiberElement({}) };
+  it("recognizes a Big Picture popup titled on the popup object", () => {
+    const fallback = documentWithFiber("Overlay");
+    const bpm = documentWithFiber("Big Picture");
     const manager = {
-      GetPopups: () => [
-        popup({ body: {} }, "Steam Big Picture Mode"),
-        popup(document, "Other"),
+      m_rgPopups: [
+        { title: "Overlay", m_popup: { document: fallback } },
+        { title: "Steam Big Picture Mode", m_popup: { document: bpm } },
       ],
     };
 
-    expect(getBigPictureDocument(manager)).toBe(document);
+    expect(getBigPictureDocument(manager)).toBe(bpm);
   });
 
-  it("finds a queryable fiber anchor", () => {
-    const anchor = fiberElement({});
-    const document = {
-      body: {},
-      querySelectorAll: () => [{}, anchor],
+  it("supports GetPopups and falls back to any popup with a fiber", () => {
+    const noFiber = document.implementation.createHTMLDocument("No fiber anchor");
+    const fallback = documentWithFiber("Other");
+    const manager = {
+      GetPopups: () => [popup(noFiber, "Steam Big Picture Mode"), popup(fallback)],
     };
 
-    expect(getBigPictureDocument({ m_rgPopups: [popup(document)] })).toBe(document);
+    expect(getBigPictureDocument(manager)).toBe(fallback);
+  });
+
+  it("iterates the popup generator current Steam returns", () => {
+    const bpm = documentWithFiber("Big Picture");
+    const manager = {
+      GetPopups: function* () {
+        yield popup(bpm, "Steam Big Picture Mode");
+      },
+    };
+
+    expect(getBigPictureDocument(manager)).toBe(bpm);
+  });
+
+  it("finds a queryable fiber anchor when the body has none", () => {
+    const created = document.implementation.createHTMLDocument("Anchored");
+    const anchor = created.createElement("div");
+    created.body.append(anchor);
+    Reflect.set(anchor, "__reactFiber$test", { memoizedProps: {}, return: null });
+
+    expect(getBigPictureDocument({ m_rgPopups: [popup(created)] })).toBe(created);
   });
 
   it.each([
     undefined,
     {},
     { m_rgPopups: [] },
-    { m_rgPopups: [null, {}, popup({ body: {} })] },
+    { m_rgPopups: [null, {}, { m_popup: { document: {} } }] },
   ])("returns undefined for malformed manager %s", (manager) => {
     expect(() => getBigPictureDocument(manager)).not.toThrow();
     expect(getBigPictureDocument(manager)).toBeUndefined();
   });
 });
 
-describe("captureMiniAchievements", () => {
-  it("composes popup lookup, root climb, and fiber DFS to return the class and instances", () => {
-    const firstInstance = { props: {} };
-    const secondInstance = { props: {} };
-    const miniFiber = {
-      elementType: MiniAchievementsSignatureDouble,
-      stateNode: firstInstance,
-      sibling: {
-        type: MiniAchievementsSignatureDouble,
-        stateNode: secondInstance,
-      },
-    };
-    const root = { child: { child: miniFiber } };
-    const leaf = { return: root };
-    const document = { body: fiberElement(leaf) };
+describe("achievement stat row", () => {
+  it("draws Steam's counts right after Play Time when the native bar is gone", () => {
+    const cache = installCache(progress(80, 179, 44.7));
+    const { playtime, section } = mountSection();
 
-    expect(
-      captureMiniAchievements({
-        m_rgPopups: [popup(document, "Steam Big Picture Mode")],
-      }),
-    ).toEqual({
-      MiniClass: MiniAchievementsSignatureDouble,
-      instances: [firstInstance, secondInstance],
-    });
+    dispose = install();
+    const inserted = row(section);
+
+    expect(inserted).not.toBeNull();
+    expect(inserted?.previousElementSibling).toBe(playtime);
+    expect(inserted?.classList.contains(classes.GameStat)).toBe(true);
+    expect(inserted?.getAttribute("role")).toBe("button");
+    expect(inserted?.tabIndex).toBe(0);
+    expect(countText(inserted as Element)).toBe("80 / 179");
+    expect(fillWidth(inserted as Element)).toBe("45%");
+    expect(cache.queueUpdate).not.toHaveBeenCalled();
   });
 
-  it("returns empties without throwing when capture data is malformed", () => {
-    const manager = Object.defineProperty({}, "m_rgPopups", {
-      get: () => {
-        throw new Error("popups unavailable");
-      },
-    });
+  it("opens the native achievements page by click and keyboard", () => {
+    installCache(progress(80, 179, 44.7));
+    const { section } = mountSection();
+    dispose = install();
+    const inserted = row(section) as HTMLElement;
 
-    expect(() => captureMiniAchievements(manager)).not.toThrow();
-    expect(captureMiniAchievements(manager)).toEqual({
-      MiniClass: undefined,
-      instances: [],
-    });
-  });
-});
-
-describe("resolveSeekController", () => {
-  it("resolves the nearest SeekToSection controller", () => {
-    const controller = { SeekToSection: vi.fn() };
-    const instance = {
-      _reactInternals: {
-        return: {
-          stateNode: controller,
-        },
-      },
-    };
-
-    expect(resolveSeekController(instance)).toBe(controller);
-  });
-
-  it.each([
-    undefined,
-    {},
-    { _reactInternals: {} },
-    { _reactInternalFiber: { return: { stateNode: {} } } },
-  ])("returns undefined for an instance without a controller", (instance) => {
-    expect(() => resolveSeekController(instance)).not.toThrow();
-    expect(resolveSeekController(instance)).toBeUndefined();
-  });
-});
-
-describe("patchMiniAchievementsRender", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  it("installs persistent props and schedules one re-render per instance", () => {
-    let handler: Function | undefined;
-    const unpatch = vi.fn();
-    const fakeAfterPatch = vi.fn((_target, _method, callback) => {
-      handler = callback;
-      return { unpatch };
-    });
-    class MiniClass {
-      props: any = { details: true };
-      forceUpdate = vi.fn();
-    }
-    const controller = { SeekToSection: vi.fn() };
-    const instance = new MiniClass() as any;
-    instance._reactInternals = { return: { stateNode: controller } };
-
-    const patch = patchMiniAchievementsRender(MiniClass, {
-      afterPatch: fakeAfterPatch,
-      onRestore: vi.fn(),
-    });
-
-    expect(fakeAfterPatch).toHaveBeenCalledWith(
-      MiniClass.prototype,
-      "render",
-      expect.any(Function),
+    inserted.click();
+    expect(mocks.navigate).toHaveBeenLastCalledWith(
+      `/library/app/${APP_ID}/achievements/my/individual`,
     );
-    expect(patch).toEqual({ unpatch });
 
-    expect(handler?.call(instance, [], null)).toBeNull();
-    expect(typeof instance.props.onSeek).toBe("function");
-    instance.props.onSeek("achievements");
-    expect(controller.SeekToSection).toHaveBeenCalledWith("achievements");
-
-    instance.props = { replacement: true, onSeek: null };
-    expect(instance.props).toMatchObject({
-      replacement: true,
-      onSeek: expect.any(Function),
-    });
-
-    handler?.call(instance, [], "same return");
-    expect(vi.getTimerCount()).toBe(1);
-    vi.runAllTimers();
-    expect(instance.forceUpdate).toHaveBeenCalledOnce();
+    inserted.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    inserted.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    expect(mocks.navigate).toHaveBeenCalledTimes(3);
   });
 
-  it("preserves an existing onSeek handler", () => {
-    let handler: Function | undefined;
-    const existing = vi.fn();
-    class MiniClass {
-      props = { onSeek: existing };
-      forceUpdate = vi.fn();
-    }
-    const instance = new MiniClass();
-    patchMiniAchievementsRender(MiniClass, {
-      afterPatch: (_target, _method, callback) => {
-        handler = callback;
-        return { unpatch: vi.fn() };
-      },
-    });
+  it("asks Steam to fill a cold progress cache and shows the counts afterwards", () => {
+    const cache = installCache();
+    const { section } = mountSection();
 
-    handler?.call(instance, [], null);
+    dispose = install();
+    expect(row(section)).toBeNull();
+    expect(cache.queueUpdate).toHaveBeenCalledWith(APP_ID);
 
-    expect(instance.props.onSeek).toBe(existing);
+    cache.mapCache.set(APP_ID, progress(80, 179, 44.7));
+    vi.advanceTimersByTime(500);
+
+    expect(row(section)).not.toBeNull();
+    expect(countText(row(section) as Element)).toBe("80 / 179");
+    expect(cache.queueUpdate).toHaveBeenCalledTimes(1);
   });
 
-  it("fails closed when no seek controller or forceUpdate is available", () => {
-    let handler: Function | undefined;
-    class MiniClass {
-      props: any = {};
-    }
-    const instance = new MiniClass();
-    patchMiniAchievementsRender(MiniClass, {
-      afterPatch: (_target, _method, callback) => {
-        handler = callback;
-        return { unpatch: vi.fn() };
-      },
-    });
+  it("polls past the first retry when Steam answers the cache request late", () => {
+    const cache = installCache();
+    const { section } = mountSection();
 
-    expect(() => handler?.call(instance, [], null)).not.toThrow();
-    expect(() => instance.props.onSeek("achievements")).not.toThrow();
-    expect(() => vi.runAllTimers()).not.toThrow();
-  });
-});
+    dispose = install();
+    vi.advanceTimersByTime(500);
+    expect(row(section)).toBeNull();
 
-describe("restoreInstance", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
+    // No DOM mutation: only the bounded poll can reveal the late cache entry.
+    cache.mapCache.set(APP_ID, progress(80, 179, 44.7));
+    vi.advanceTimersByTime(1_000);
+
+    expect(row(section)).not.toBeNull();
+    expect(countText(row(section) as Element)).toBe("80 / 179");
+    expect(cache.queueUpdate).toHaveBeenCalledTimes(1);
   });
 
-  it("installs persistent props and schedules only one refresh per instance", () => {
-    const controller = { SeekToSection: vi.fn() };
-    const instance: any = {
-      props: { details: true, overview: { installed: false } },
-      forceUpdate: vi.fn(),
-      _reactInternals: { return: { stateNode: controller } },
-    };
-    const defineProperty = vi.spyOn(Object, "defineProperty");
+  it("refreshes the shown counts when Steam reports an achievement change", () => {
+    const cache = installCache(progress(80, 179, 44.7));
+    const { section } = mountSection();
+    dispose = install();
+    expect(row(section)).not.toBeNull();
 
-    restoreInstance(instance);
-    restoreInstance(instance);
-
-    expect(
-      defineProperty.mock.calls.filter(
-        ([target, property]) => target === instance && property === "props",
-      ),
-    ).toHaveLength(1);
-    expect(instance.props).toMatchObject({
-      details: true,
-      onSeek: expect.any(Function),
-      overview: { installed: false },
-    });
-
-    instance.props.onSeek("achievements");
-    expect(controller.SeekToSection).toHaveBeenCalledWith("achievements");
-
-    instance.props = { replacement: true, onSeek: null };
-    expect(instance.props).toMatchObject({
-      replacement: true,
-      onSeek: expect.any(Function),
-    });
-
-    expect(vi.getTimerCount()).toBe(1);
-    vi.runAllTimers();
-    expect(instance.forceUpdate).toHaveBeenCalledOnce();
-  });
-
-  it("fails closed without a controller, forceUpdate, or usable instance", () => {
-    const instance: any = { props: {} };
-
-    expect(() => restoreInstance(instance)).not.toThrow();
-    expect(() => instance.props.onSeek("achievements")).not.toThrow();
-    expect(() => restoreInstance(undefined)).not.toThrow();
-    expect(() => vi.runAllTimers()).not.toThrow();
-  });
-
-  it("restores the latest raw props and can be enabled again after cleanup", () => {
-    const instance: any = { props: { original: true }, forceUpdate: vi.fn() };
-    const cleanup = restoreInstance(instance);
-    instance.props = { latest: true, onSeek: undefined };
-
-    expect(instance.props.onSeek).toEqual(expect.any(Function));
-    cleanup?.();
-    cleanup?.();
-    expect(instance.props).toEqual({ latest: true, onSeek: undefined });
-    expect(Object.prototype.hasOwnProperty.call(instance, "__achRestored")).toBe(false);
-    vi.runAllTimers();
-    expect(instance.forceUpdate).toHaveBeenCalledTimes(2);
-
-    expect(restoreInstance(instance)).toEqual(expect.any(Function));
-    expect(instance.props.onSeek).toEqual(expect.any(Function));
-  });
-
-  it("restores an own accessor and commits the latest raw props through its setter", () => {
-    let backing: any = { original: true };
-    const get = vi.fn(() => backing);
-    const set = vi.fn((value) => {
-      backing = value;
-    });
-    const instance: any = { forceUpdate: vi.fn() };
-    Object.defineProperty(instance, "props", {
-      configurable: true,
-      enumerable: false,
-      get,
-      set,
-    });
-
-    const cleanup = restoreInstance(instance);
-    instance.props = { latest: true, onSeek: undefined };
-    cleanup?.();
-
-    const descriptor = Object.getOwnPropertyDescriptor(instance, "props");
-    expect(descriptor).toMatchObject({ configurable: true, enumerable: false, get, set });
-    expect(set).toHaveBeenCalledWith({ latest: true, onSeek: undefined });
-    expect(instance.props).toEqual({ latest: true, onSeek: undefined });
-  });
-
-  it("removes the wrapper and uses an inherited setter during cleanup", () => {
-    let backing: any = { inherited: true };
-    const inheritedSet = vi.fn((value) => {
-      backing = value;
-    });
-    const prototype = Object.defineProperty({}, "props", {
-      configurable: true,
-      get: () => backing,
-      set: inheritedSet,
-    });
-    const instance: any = Object.assign(Object.create(prototype), {
-      forceUpdate: vi.fn(),
-    });
-
-    const cleanup = restoreInstance(instance);
-    instance.props = { latest: true, onSeek: null };
-    cleanup?.();
-
-    expect(Object.prototype.hasOwnProperty.call(instance, "props")).toBe(false);
-    expect(inheritedSet).toHaveBeenCalledWith({ latest: true, onSeek: null });
-    expect(instance.props).toEqual({ latest: true, onSeek: null });
-  });
-
-  it("deletes the wrapper when the instance originally had no props descriptor", () => {
-    const instance: any = { forceUpdate: vi.fn() };
-
-    const cleanup = restoreInstance(instance);
-    instance.props = { latest: true };
-    cleanup?.();
-
-    expect(Object.prototype.hasOwnProperty.call(instance, "props")).toBe(false);
-  });
-});
-
-describe("installAchievementBarPatch", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.restoreAllMocks();
-    vi.clearAllMocks();
-    mocks.addPatch.mockImplementation((_path, callback) => callback);
-    mocks.afterPatch.mockImplementation(() => ({ unpatch: vi.fn() }));
-  });
-
-  it("defers capture, patches once, and refreshes every mounted instance", () => {
-    const firstInstance: any = { props: {}, forceUpdate: vi.fn() };
-    const secondInstance: any = { props: {}, forceUpdate: vi.fn() };
-    const document = {
-      body: fiberElement({
-        type: MiniAchievementsSignatureDouble,
-        stateNode: firstInstance,
-        sibling: {
-          type: MiniAchievementsSignatureDouble,
-          stateNode: secondInstance,
-        },
-      }),
-    };
-    const getPopupManager = vi
-      .spyOn(steamGlobals, "getPopupManager")
-      .mockReturnValue({
-        m_rgPopups: [popup(document, "Steam Big Picture Mode")],
-      });
-    const routeOwner = { renderFunc: vi.fn(() => ({ rendered: true })) };
-    const props = Object.freeze({ children: { props: routeOwner } });
-
-    const dispose = installAchievementBarPatch();
-    const callback = routeCallback();
-
-    expect(mocks.addPatch).toHaveBeenCalledWith(APP_ROUTE, expect.any(Function));
-    expect(callback(props)).toBe(props);
-    expect(callback(props)).toBe(props);
-    expect(getPopupManager).not.toHaveBeenCalled();
-    expect(mocks.afterPatch).toHaveBeenCalledOnce();
-    expect(mocks.afterPatch).toHaveBeenCalledWith(
-      routeOwner,
-      "renderFunc",
-      expect.any(Function),
-    );
-    expect(vi.getTimerCount()).toBe(1);
-
-    vi.runAllTimers();
-
-    expect(getPopupManager).toHaveBeenCalledOnce();
-    expect(mocks.afterPatch).toHaveBeenCalledTimes(2);
-    expect(mocks.afterPatch).toHaveBeenCalledWith(
-      MiniAchievementsSignatureDouble.prototype,
-      "render",
-      expect.any(Function),
-    );
-    expect(firstInstance.props.onSeek).toEqual(expect.any(Function));
-    expect(secondInstance.props.onSeek).toEqual(expect.any(Function));
-    expect(firstInstance.forceUpdate).toHaveBeenCalledOnce();
-    expect(secondInstance.forceUpdate).toHaveBeenCalledOnce();
-
-    callback(props);
-    vi.runAllTimers();
-    expect(mocks.afterPatch).toHaveBeenCalledTimes(2);
-    expect(firstInstance.forceUpdate).toHaveBeenCalledOnce();
-    expect(secondInstance.forceUpdate).toHaveBeenCalledOnce();
-
-    const routeRenderPatch = mocks.afterPatch.mock.results[0].value;
-    const prototypePatch = mocks.afterPatch.mock.results[1].value;
-    dispose();
-    expect(mocks.removePatch).toHaveBeenCalledWith(APP_ROUTE, callback);
-    expect(routeRenderPatch.unpatch).toHaveBeenCalledOnce();
-    expect(prototypePatch.unpatch).toHaveBeenCalledOnce();
-    expect(firstInstance.props.onSeek).toBeUndefined();
-    expect(secondInstance.props.onSeek).toBeUndefined();
-    vi.runAllTimers();
-    expect(firstInstance.forceUpdate).toHaveBeenCalledTimes(2);
-    expect(secondInstance.forceUpdate).toHaveBeenCalledTimes(2);
-  });
-
-  it("retries from a real route render after the initial capture burst expires", () => {
-    const manager: any = { m_rgPopups: [] };
-    vi.spyOn(steamGlobals, "getPopupManager").mockReturnValue(manager);
-    const routeOwner = {
-      renderFunc: vi.fn(() => ({ rendered: true })),
-    };
-    installMethodPatchMock();
-    installAchievementBarPatch();
-
-    const routeProps = { children: { props: routeOwner } };
-    expect(routeCallback()(routeProps)).toBe(routeProps);
-    expect(mocks.afterPatch).toHaveBeenCalledWith(
-      routeOwner,
-      "renderFunc",
-      expect.any(Function),
-    );
-    vi.runAllTimers();
-    expect(
-      mocks.afterPatch.mock.calls.filter(
-        ([target, method]) =>
-          target === MiniAchievementsSignatureDouble.prototype && method === "render",
-      ),
-    ).toHaveLength(0);
-
-    manager.m_rgPopups = [
-      popup(
-        { body: fiberElement({ type: MiniAchievementsSignatureDouble }) },
-        "Steam Big Picture Mode",
-      ),
-    ];
-    const captureCallsBeforeRender = mocks.afterPatch.mock.calls.length;
-    expect(routeOwner.renderFunc()).toEqual({ rendered: true });
-    expect(mocks.afterPatch).toHaveBeenCalledTimes(captureCallsBeforeRender);
-    vi.runAllTimers();
-
-    expect(
-      mocks.afterPatch.mock.calls.filter(
-        ([target, method]) =>
-          target === MiniAchievementsSignatureDouble.prototype && method === "render",
-      ),
-    ).toHaveLength(1);
-  });
-
-  it("finds a class that appears later within one bounded capture burst", () => {
-    const emptyManager = { m_rgPopups: [] };
-    const instance: any = { props: {}, forceUpdate: vi.fn() };
-    const readyManager = {
-      m_rgPopups: [
-        popup(
-          {
-            body: fiberElement({
-              type: MiniAchievementsSignatureDouble,
-              stateNode: instance,
-            }),
-          },
-          "Steam Big Picture Mode",
-        ),
-      ],
-    };
-    const getPopupManager = vi
-      .spyOn(steamGlobals, "getPopupManager")
-      .mockReturnValueOnce(emptyManager)
-      .mockReturnValue(readyManager);
-    const routeOwner = { renderFunc: vi.fn(() => null) };
-
-    installAchievementBarPatch();
-    routeCallback()({ children: { props: routeOwner } });
-
+    cache.mapCache.set(APP_ID, progress(81, 179, undefined));
+    onAchievementChange?.(APP_ID);
     vi.advanceTimersByTime(0);
-    expect(getPopupManager).toHaveBeenCalledOnce();
-    expect(instance.props.onSeek).toBeUndefined();
 
-    vi.advanceTimersByTime(50);
-    expect(getPopupManager).toHaveBeenCalledTimes(2);
-    expect(instance.props.onSeek).toEqual(expect.any(Function));
-    vi.runAllTimers();
-    expect(instance.forceUpdate).toHaveBeenCalledOnce();
+    expect(countText(row(section) as Element)).toBe("81 / 179");
+    expect(fillWidth(row(section) as Element)).toBe("45%");
   });
 
-  it("coalesces rapid real renders and stops scanning after success", () => {
-    const manager: any = { m_rgPopups: [] };
-    const getPopupManager = vi
-      .spyOn(steamGlobals, "getPopupManager")
-      .mockReturnValue(manager);
-    const routeOwner = { renderFunc: vi.fn(() => "rendered") };
-    installMethodPatchMock();
-    installAchievementBarPatch();
-    routeCallback()({ children: { props: routeOwner } });
-    vi.runAllTimers();
-    expect(getPopupManager).toHaveBeenCalledTimes(4);
+  it.each(invalidProgressEntries)("hides instead of fabricating data for %s", (_name, entry) => {
+    installCache(entry);
+    const { section } = mountSection();
 
-    manager.m_rgPopups = [
-      popup(
-        { body: fiberElement({ type: MiniAchievementsSignatureDouble }) },
-        "Steam Big Picture Mode",
-      ),
-    ];
-    routeOwner.renderFunc();
-    routeOwner.renderFunc();
-    routeOwner.renderFunc();
-    expect(vi.getTimerCount()).toBe(1);
-    vi.runAllTimers();
+    dispose = install();
 
-    const callsAfterSuccess = getPopupManager.mock.calls.length;
-    routeOwner.renderFunc();
-    vi.runAllTimers();
-    expect(getPopupManager).toHaveBeenCalledTimes(callsAfterSuccess);
-    expect(
-      mocks.afterPatch.mock.calls.filter(
-        ([target, method]) =>
-          target === MiniAchievementsSignatureDouble.prototype && method === "render",
-      ),
-    ).toHaveLength(1);
+    expect(row(section)).toBeNull();
   });
 
-  it("attempts every disposer when cleanup operations throw", () => {
-    const document = {
-      body: fiberElement({ type: MiniAchievementsSignatureDouble }),
-    };
-    vi.spyOn(steamGlobals, "getPopupManager").mockReturnValue({
-      m_rgPopups: [popup(document)],
-    });
-    mocks.removePatch.mockImplementation(() => {
-      throw new Error("route removal failed");
-    });
-    const routeRenderUnpatch = vi.fn(() => {
-      throw new Error("route render unpatch failed");
-    });
-    const prototypeUnpatch = vi.fn(() => {
-      throw new Error("prototype removal failed");
-    });
-    mocks.afterPatch.mockImplementation((_target, method) => ({
-      unpatch: method === "renderFunc" ? routeRenderUnpatch : prototypeUnpatch,
-    }));
-    const routeOwner = { renderFunc: vi.fn(() => null) };
+  it("stays hidden when Steam marks the game as having no achievements", () => {
+    const cache = installCache(progress(0, 2, 0));
+    cache.hasAchievements.mockReturnValue(false);
+    const { section } = mountSection();
 
-    const dispose = installAchievementBarPatch();
-    routeCallback()({ children: { props: routeOwner } });
-    vi.runAllTimers();
+    dispose = install();
 
-    expect(() => dispose()).not.toThrow();
-    expect(routeRenderUnpatch).toHaveBeenCalledOnce();
-    expect(mocks.removePatch).toHaveBeenCalledOnce();
-    expect(prototypeUnpatch).toHaveBeenCalledOnce();
-    expect(mocks.warn).toHaveBeenCalledTimes(3);
+    expect(row(section)).toBeNull();
   });
 
-  it("cancels pending capture work when disposed", () => {
-    const getPopupManager = vi.spyOn(steamGlobals, "getPopupManager");
-    const routeOwner = { renderFunc: vi.fn(() => null) };
-    installMethodPatchMock();
-    const dispose = installAchievementBarPatch();
-    routeCallback()({ children: { props: routeOwner } });
-    const staleWrappedRender = routeOwner.renderFunc;
-
-    expect(vi.getTimerCount()).toBe(1);
-    dispose();
-    expect(vi.getTimerCount()).toBe(0);
-    vi.runAllTimers();
-    expect(getPopupManager).not.toHaveBeenCalled();
-
-    staleWrappedRender();
-    vi.runAllTimers();
-    expect(getPopupManager).not.toHaveBeenCalled();
-  });
-
-  it("never throws on capture failures and allows a later render to retry", () => {
-    vi.spyOn(steamGlobals, "getPopupManager").mockImplementation(() => {
-      throw new Error("Steam globals unavailable");
+  it("stays hidden when Steam's achievement probe throws", () => {
+    const cache = installCache(progress(80, 179, 44.7));
+    cache.hasAchievements.mockImplementation(() => {
+      throw new Error("cache unavailable");
     });
-    const routeOwner = { renderFunc: vi.fn(() => "rendered") };
-    installMethodPatchMock();
-    installAchievementBarPatch();
+    const { section } = mountSection();
 
-    expect(() =>
-      routeCallback()({ children: { props: routeOwner } }),
-    ).not.toThrow();
-    expect(() => vi.runAllTimers()).not.toThrow();
-    expect(mocks.warn).toHaveBeenCalled();
-    expect(() => routeOwner.renderFunc()).not.toThrow();
-    expect(vi.getTimerCount()).toBe(1);
+    dispose = install();
+
+    expect(row(section)).toBeNull();
   });
 
-  it("ignores malformed route props without scheduling capture", () => {
-    installAchievementBarPatch();
-    const props = Object.defineProperty({}, "children", {
-      get: () => {
-        throw new Error("route props unavailable");
+  it("preserves the uninstalled zero-progress guard but shows earned progress", () => {
+    const cache = installCache(progress(0, 49, 0));
+    const { section } = mountSection(APP_ID, { installed: undefined });
+
+    dispose = install();
+    expect(row(section)).toBeNull();
+
+    cache.mapCache.set(APP_ID, progress(12, 49, 24.5));
+    onAchievementChange?.(APP_ID);
+    vi.advanceTimersByTime(0);
+
+    expect(row(section)).not.toBeNull();
+    expect(countText(row(section) as Element)).toBe("12 / 49");
+  });
+
+  it.each(nonSteamOverrides)("fails closed for %s", (_name, overrides) => {
+    const cache = installCache(progress(80, 179, 44.7));
+    const { section } = mountSection(APP_ID, overrides);
+
+    dispose = install();
+
+    expect(row(section)).toBeNull();
+    expect(cache.queueUpdate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the fiber overview belongs to a different app", () => {
+    installCache(progress(80, 179, 44.7));
+    const { section } = mountSection(APP_ID, { appid: SECOND_APP_ID }, APP_ID);
+
+    dispose = install();
+
+    expect(row(section)).toBeNull();
+  });
+
+  it("leaves Steam's own bar alone and restores the row if that bar disappears", () => {
+    installCache(progress(80, 179, 44.7));
+    const { section } = mountSection();
+    const nativeBar = document.createElement("div");
+    nativeBar.className = classes.MiniAchievements;
+    section.append(nativeBar);
+
+    dispose = install();
+    expect(row(section)).toBeNull();
+
+    nativeBar.remove();
+    onAchievementChange?.();
+    vi.advanceTimersByTime(0);
+    expect(row(section)).not.toBeNull();
+  });
+
+  it("follows the stats section across games without leaving a duplicate row", () => {
+    const cache = installCache(progress(80, 179, 44.7));
+    const first = mountSection();
+    dispose = install();
+    expect(row(first.section)).not.toBeNull();
+
+    first.section.remove();
+    const second = mountSection(SECOND_APP_ID, { appid: SECOND_APP_ID });
+    cache.mapCache.set(SECOND_APP_ID, progress(1, 2, 50));
+    onAchievementChange?.(SECOND_APP_ID);
+    vi.advanceTimersByTime(0);
+
+    expect(document.querySelectorAll(`.${ROW_CLASS}`)).toHaveLength(1);
+    expect(first.section.querySelector(`.${ROW_CLASS}`)).toBeNull();
+    const inserted = row(second.section) as HTMLElement;
+    expect(inserted.previousElementSibling).toBe(second.playtime);
+    expect(countText(inserted)).toBe("1 / 2");
+    inserted.click();
+    expect(mocks.navigate).toHaveBeenLastCalledWith(
+      `/library/app/${SECOND_APP_ID}/achievements/my/individual`,
+    );
+  });
+
+  it("rebuilds the row when the same stats section switches games", () => {
+    const cache = installCache(progress(80, 179, 44.7));
+    const mounted = mountSection();
+    dispose = install();
+    expect(countText(row(mounted.section) as Element)).toBe("80 / 179");
+
+    cache.mapCache.set(SECOND_APP_ID, progress(1, 2, 50));
+    Reflect.set(mounted.section, "__reactFiber$test", {
+      memoizedProps: {
+        overview: { appid: SECOND_APP_ID, installed: true, app_type: 1 },
       },
+      return: null,
     });
+    onAchievementChange?.(SECOND_APP_ID);
+    vi.advanceTimersByTime(0);
 
-    expect(() => routeCallback()(props)).not.toThrow();
-    expect(routeCallback()(props)).toBe(props);
-    expect(() => vi.runAllTimers()).not.toThrow();
-    expect(mocks.afterPatch).not.toHaveBeenCalled();
-    expect(vi.getTimerCount()).toBe(0);
+    expect(mounted.section.querySelectorAll(`.${ROW_CLASS}`)).toHaveLength(1);
+    const inserted = row(mounted.section) as HTMLElement;
+    expect(countText(inserted)).toBe("1 / 2");
+    inserted.click();
+    expect(mocks.navigate).toHaveBeenLastCalledWith(
+      `/library/app/${SECOND_APP_ID}/achievements/my/individual`,
+    );
   });
 
-  it("returns a safe no-op disposer when registration fails", () => {
+  it("removes its row when the stats section or Big Picture document disappears", () => {
+    installCache(progress(80, 179, 44.7));
+    const { section } = mountSection();
+    dispose = install();
+    expect(row(section)).not.toBeNull();
+
+    section.remove();
+    onAchievementChange?.();
+    vi.advanceTimersByTime(0);
+    expect(section.querySelector(`.${ROW_CLASS}`)).toBeNull();
+
+    mountSection();
+    onAchievementChange?.();
+    vi.advanceTimersByTime(0);
+    expect(document.querySelector(`.${ROW_CLASS}`)).not.toBeNull();
+
+    vi.mocked(steamGlobals.getPopupManager).mockReturnValue(undefined);
+    onAchievementChange?.();
+    vi.advanceTimersByTime(0);
+    expect(document.querySelector(`.${ROW_CLASS}`)).toBeNull();
+  });
+
+  it("retries after a route render when the page's stats section commits late", () => {
+    installCache(progress(80, 179, 44.7));
+    dispose = install();
+    vi.runAllTimers();
+    expect(document.querySelector(`.${ROW_CLASS}`)).toBeNull();
+
+    const { section } = mountSection();
+    const owner = { renderFunc: vi.fn(() => null) };
+    applyRoute(owner);
+    vi.advanceTimersByTime(0);
+
+    expect(row(section)).not.toBeNull();
+  });
+
+  it("patches each route owner once and unpatches it on teardown", () => {
+    installCache(progress(80, 179, 44.7));
+    mountSection();
+    const owner = { renderFunc: vi.fn(() => null) };
+
+    dispose = install();
+    applyRoute(owner);
+    applyRoute(owner);
+    applyRoute(owner);
+
+    expect(routeRenderPatches(owner)).toHaveLength(1);
+    expect(mocks.addPatch).toHaveBeenCalledWith(APP_ROUTE, expect.any(Function));
+
+    dispose();
+    dispose = undefined;
+    expect(routeRenderPatches(owner)[0]?.unpatch).toHaveBeenCalledOnce();
+    expect(mocks.removePatch).toHaveBeenCalledTimes(1);
+    expect(owner.renderFunc()).toBeNull();
+  });
+
+  it("unpatches the previous route owner when the route tree changes", () => {
+    installCache(progress(80, 179, 44.7));
+    mountSection();
+    dispose = install();
+    const first = { renderFunc: vi.fn(() => null) };
+    const second = { renderFunc: vi.fn(() => null) };
+
+    applyRoute(first);
+    applyRoute(second);
+
+    expect(routeRenderPatches(first)).toHaveLength(1);
+    expect(routeRenderPatches(first)[0]?.unpatch).toHaveBeenCalledOnce();
+    expect(routeRenderPatches(second)).toHaveLength(1);
+    expect(first.renderFunc()).toBeNull();
+
+    dispose();
+    dispose = undefined;
+    expect(routeRenderPatches(second)[0]?.unpatch).toHaveBeenCalledOnce();
+  });
+
+  it("does not install twice and releases every hook on teardown", () => {
+    installCache(progress(80, 179, 44.7));
+    const { section } = mountSection();
+    const owner = { renderFunc: vi.fn(() => null) };
+
+    const first = installAchievementBarPatch();
+    dispose = first;
+    const second = installAchievementBarPatch();
+    expect(second).toBe(first);
+    expect(mocks.addPatch).toHaveBeenCalledTimes(1);
+    expect(registerAchievements).toHaveBeenCalledTimes(1);
+
+    applyRoute(owner);
+    vi.advanceTimersByTime(0);
+    expect(row(section)).not.toBeNull();
+    const staleCallback = routeRecords[0].callback;
+
+    dispose();
+    dispose = undefined;
+    expect(row(section)).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(unregisterAchievements).toHaveBeenCalledOnce();
+    expect(routeRenderPatches(owner)[0]?.unpatch).toHaveBeenCalledOnce();
+    expect(mocks.removePatch).toHaveBeenCalledTimes(1);
+
+    const staleOwner = { renderFunc: vi.fn(() => null) };
+    expect(() => staleCallback({ props: staleOwner })).not.toThrow();
+    expect(routeRenderPatches(staleOwner)).toHaveLength(0);
+
+    dispose = install();
+    expect(row(section)).not.toBeNull();
+    expect(mocks.addPatch).toHaveBeenCalledTimes(2);
+    expect(registerAchievements).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns a safe disposer when route registration and Steam globals fail", () => {
     mocks.addPatch.mockImplementation(() => {
       throw new Error("router unavailable");
     });
+    vi.mocked(steamGlobals.getPopupManager).mockImplementation(() => {
+      throw new Error("Steam globals unavailable");
+    });
 
-    const dispose = installAchievementBarPatch();
+    dispose = installAchievementBarPatch();
 
+    expect(() => vi.runAllTimers()).not.toThrow();
     expect(mocks.warn).toHaveBeenCalled();
-    expect(() => dispose()).not.toThrow();
+    expect(() => dispose?.()).not.toThrow();
     expect(mocks.removePatch).not.toHaveBeenCalled();
   });
 });
