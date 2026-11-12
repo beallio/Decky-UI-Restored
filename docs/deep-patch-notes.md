@@ -59,7 +59,9 @@ progress, rather than restoring a Valve component.
   unlocked achievements may render once totals are available.
 - **Cleanup.** Disabling the feature or unloading the plugin removes the row,
   disconnects the observer, clears retry timers, unsubscribes the achievement
-  listener, and unpatches the route/render hooks. Every path is wrapped so a
+  listener, and unpatches the route/render hooks. Navigation can remove the
+  whole PlayBar, which does not notify an observer inside it, so a one-second
+  connectivity check releases the detached page. Every path is wrapped so a
   missing Steam internal fails closed instead of breaking the Steam UI.
 
 This row-and-cache mechanism is ported from Decky Metadata's November 2026 fix

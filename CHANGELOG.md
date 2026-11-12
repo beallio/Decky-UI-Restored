@@ -10,6 +10,15 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-11-12
+
+Releases the old game-details page promptly when navigation removes the whole PlayBar.
+
+### Fixed
+
+- Detect when navigation detaches the row's entire PlayBar and remove the injected row,
+  observer, and stale page references instead of retaining them until another event.
+
 ## [0.2.4] - 2026-11-12
 
 Restores the mini achievement progress row on the November 2026 Steam client and updates
