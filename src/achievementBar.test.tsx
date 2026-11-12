@@ -566,7 +566,8 @@ describe("achievement stat row", () => {
     const { section } = mountSection(APP_ID, {}, undefined, playBar);
 
     dispose = install();
-    vi.advanceTimersByTime(1_100);
+    // Retries chain cumulatively: 0 + 50 + 250 + 1000 = 1300 ms.
+    vi.advanceTimersByTime(2_000);
     const inserted = row(section);
     expect(inserted).not.toBeNull();
 
