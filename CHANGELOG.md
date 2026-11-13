@@ -10,6 +10,8 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-11-13
+
 Brings back Steam's own mini achievement row on the game-details page and updates
 development dependencies with security fixes.
 
