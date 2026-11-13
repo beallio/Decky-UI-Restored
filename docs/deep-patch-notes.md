@@ -45,7 +45,10 @@ which replaced its own drawn row the same way.
 - **Cleanup.** Disabling the feature or unloading the plugin writes the latest
   real props back as a plain data property and calls `forceUpdate()`, so the
   row hides without a reload. It also disconnects the observer, clears the
-  timer, and removes route and render patches. Every path fails closed.
+  timer, and removes route and render patches. A sync that no longer finds a
+  patched section restores that instance the same way before dropping it, so a
+  reinserted section is patched again and no accessor outlives teardown. Every
+  path fails closed.
 
 ### Verification status
 

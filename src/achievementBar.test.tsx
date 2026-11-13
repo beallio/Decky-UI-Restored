@@ -330,6 +330,27 @@ describe("achievement stat onSeek supply", () => {
     expect(instance.props.onSeek).toBeTypeOf("function");
   });
 
+  it("restores a detached section's real props, re-patches it when reinserted, and restores it on teardown", () => {
+    const raw = statsProps();
+    const { instance, section } = mountSection(raw);
+    dispose = install();
+    const route = { renderFunc: vi.fn(() => null) };
+
+    section.remove();
+    applyRoute(route);
+    vi.advanceTimersByTime(0);
+    expect(Object.getOwnPropertyDescriptor(instance, "props")).toMatchObject({ value: raw });
+
+    document.body.append(section);
+    route.renderFunc();
+    vi.advanceTimersByTime(0);
+    expect(instance.props.onSeek).toBeTypeOf("function");
+
+    dispose();
+    dispose = undefined;
+    expect(Object.getOwnPropertyDescriptor(instance, "props")).toMatchObject({ value: raw, writable: true });
+  });
+
   it("watches every game-details route and patches each route owner once", () => {
     mountSection();
     dispose = install();

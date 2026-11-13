@@ -313,8 +313,13 @@ export function installAchievementBarPatch(): () => void {
         mounted.add(instance);
         patchInstance(instance);
       }
-      // Unmounted instances need no restore; drop them so they can be collected.
-      for (const instance of patched.keys()) if (!mounted.has(instance)) patched.delete(instance);
+      // Restore before dropping: a detached instance can be reinserted, and an
+      // orphaned accessor would block re-patching and survive teardown.
+      for (const [instance, raw] of patched) {
+        if (mounted.has(instance)) continue;
+        restoreInstance(instance, raw());
+        patched.delete(instance);
+      }
       observeSection(sections[0]);
       return mounted.size > 0;
     } catch (error) {
