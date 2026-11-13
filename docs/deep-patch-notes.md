@@ -52,10 +52,20 @@ which replaced its own drawn row the same way.
 
 ### Verification status
 
-Verified on `steamdeck-vm` (SteamOS VM) on 2026-11-13 with the local
-`0.2.6+567b2e7` package, with Decky Metadata disabled so only this plugin could
-supply `onSeek`: Brotato showed Steam's native `ACHIEVEMENTS 80/179` row and
-progress bar directly after Play Time, and no plugin-drawn row.
+Verified on `steamdeck-vm` (SteamOS 3.9.6, Steam client build 1794424036,
+Decky Loader v3.3.1) on 2026-11-13 with the local `0.2.6+dc393f5` package
+(includes the detach-restore fix). Decky Metadata was disabled for tests 1–4 so
+only this plugin could supply `onSeek`.
+
+| Test | Result |
+|---|---|
+| Brotato (installed) | Steam's native `ACHIEVEMENTS 80/179` row and progress bar directly after Play Time; no plugin-drawn row. |
+| Real QAM toggle off/on on the mounted Brotato page | Off: row gone, `props` back to a plain value, no navigation or reload. On: row returns. |
+| Uninstalled Hades (12/49 earned) | Steam renders the row, but its uninstalled PlayBar layout (Install + three stats) clips it in an `overflow:hidden` band, so it is not visible. Steam layout, not the patch. |
+| Uninstalled Assassin's Creed Brotherhood (0 earned) | Steam renders no row. |
+| Non-Steam shortcut (Mario Kart 8 Deluxe) | Accessor installed but returns raw props: no `onSeek`, no row. |
+| Whole plugin disabled, then enabled | Disabled: no row, plain `props`. Enabled: exactly one row. |
+| Decky Metadata v0.6.2 enabled alongside | Exactly one native row, also after Home → Brotato. |
 
 ## Historical notes (pre-November 2026)
 

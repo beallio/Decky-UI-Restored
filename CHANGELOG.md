@@ -10,6 +10,15 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
+### Fixed
+
+- Stop drawing a plugin-owned achievement row. Steam's native mini achievements row returns
+  because the plugin supplies the `onSeek` prop that the Gaming Mode game page omits
+  ([#13540](https://github.com/ValveSoftware/steam-for-linux/issues/13540)), so Steam's own
+  layout, count format, progress bar, navigation, and visibility rules apply on all three
+  game-details routes. Turning the feature off hides the row without a reload. The approach
+  matches Decky Metadata v0.6.2.
+
 ## [0.2.5] - 2026-11-12
 
 Releases the old game-details page promptly when navigation removes the whole PlayBar.
