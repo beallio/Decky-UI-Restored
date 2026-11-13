@@ -10,6 +10,9 @@ Release entries are curated by hand and dated. A release must not be cut against
 
 ## [Unreleased]
 
+Brings back Steam's own mini achievement row on the game-details page and updates
+development dependencies with security fixes.
+
 ### Fixed
 
 - Stop drawing a plugin-owned achievement row. Steam's native mini achievements row returns
@@ -18,6 +21,14 @@ Release entries are curated by hand and dated. A release must not be cut against
   layout, count format, progress bar, navigation, and visibility rules apply on all three
   game-details routes. Turning the feature off hides the row without a reload. The approach
   matches Decky Metadata v0.6.2.
+
+### Security
+
+- Update `happy-dom` from 20.11.6 to 21.0.4, `vitest` and `@vitest/mocker` from 4.1.11 to
+  4.1.12, `vite` from 8.3.0 to 8.3.6, `fast-uri` from 3.1.6 to 3.1.9, and `source-map-js`
+  from 1.2.1 to 1.2.2, resolving 18 GitHub Dependabot alerts in development-only
+  dependencies. The `deepmerge` advisory (GHSA-gcqx-w48m-w2h4) has no patched release and
+  affects only the build-time `@rollup/plugin-node-resolve`.
 
 ## [0.2.5] - 2026-11-12
 
