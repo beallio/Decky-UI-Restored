@@ -8,20 +8,27 @@ failed patch must log and stop without crashing Steam UI.
 
 ### Mini achievements
 
-Steam's November 2026 client removed the native `MiniAchievements` bar. The
-earlier `onSeek` render patch can no longer restore it. `src/achievementBar.tsx`
-now adds an owned stat row beside Play Time, using Steam's
-`appAchievementProgressCache` and the native PlayBar CSS module.
+Steam's `MiniAchievements` component still exists, but the November 2026 Gaming
+Mode game page renders its stats section with `onSeek: undefined`, and Valve's
+row renders nothing without it (ValveSoftware/steam-for-linux#13540).
+`src/achievementBar.tsx` supplies a no-op `onSeek` so Steam draws, styles,
+fills, gates, and navigates its own row. The approach matches Decky Metadata
+v0.6.2.
 
-Read the game identity from the mounted stats section's React ancestors. Ask
-Steam to fill cold cache entries and retry reads for a bounded period. Refresh
-after route commits and achievement changes, and remove the row, observers,
-timers, subscriptions, and route hooks on disable or unload.
+Resolve the `GameStatsSection` elements in the Big Picture document, then walk at
+most 12 parent fibers to the stats class instance whose `stateNode` has
+`BUserHasContentToClaim` and `forceUpdate`. Replace that instance's configurable
+`props` data property with an accessor that returns a cached `{...raw,
+onSeek: noop}` clone, then call `forceUpdate()`. Props that already carry
+`onSeek`, non-Steam shortcuts, and non-configurable props pass through
+unchanged.
 
-Keep Valve's guards for missing achievement totals and zero-progress
-uninstalled games. Do not show a second row when the native bar is present.
-The current mechanism, upstream Metadata references, and historical native
-patch are documented in
+Watch the three game-details routes, and restart a bounded capture burst after
+route renders and PlayBar mutations. Keep Valve's guards: Steam decides whether
+the row shows, so never fabricate progress. On disable or unload, write the
+latest real props back, call `forceUpdate()`, and remove the observer, timer,
+and route hooks. The current mechanism, upstream Metadata references, and
+historical native patch are documented in
 [`docs/deep-patch-notes.md`](docs/deep-patch-notes.md).
 
 ### Home carousel title

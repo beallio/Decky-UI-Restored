@@ -1,6 +1,6 @@
 {
   "name": "decky-steamachievements",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Restores native Steam Deck interface behavior affected by Steam updates.",
   "type": "module",
   "scripts": {
@@ -28,12 +28,12 @@
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "@types/webpack": "^5.28.5",
-    "happy-dom": "^20.11.6",
+    "happy-dom": "^21.0.4",
     "rollup": "^4.22.5",
     "rollup-plugin-external-globals": "0.11.0",
     "rollup-plugin-import-assets": "1.1.1",
     "typescript": "^5.6.2",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   },
   "dependencies": {
     "@decky/api": "^1.1.2",
